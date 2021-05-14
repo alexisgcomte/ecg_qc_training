@@ -127,3 +127,14 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Sensible files
+dags/tasks/credentials.csv
+credentials.csv
+exports/
+
+# Working files
+dags/tasks/test.ipynb
+
+# Parameter files
+.vscode/
