@@ -1,0 +1,28 @@
+{"0":
+    {"patient": "PAT_6",
+     "record": "77",
+     "segment": "s1",
+     "channel": "ECG1+ECG1-",
+     "ids": "2,3,4",
+     "start_time": "2020-12-18 13:00:00",
+     "end_time": "2020-12-18 14:30:00"
+     },
+ "1":
+    {"patient": "PAT_4",
+    "record": "11",
+    "segment": "?",
+    "channel": "ECG1+ECG1-",
+    "ids": "2,3,4",
+    "start_time": "2020-12-15 21:50:00",
+    "end_time": "2020-12-15 22:50:00"
+     },
+"3":
+    {"patient": "PAT_2",
+    "record": "3",
+    "segment": "?",
+    "channel": "EMG1+EMG1-",
+    "ids": "2,3,4",
+    "start_time": "2020-12-14 21:55:00",
+    "end_time": "2020-12-14 23:05:00"
+     }
+}

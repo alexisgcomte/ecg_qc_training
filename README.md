@@ -3,9 +3,9 @@
 
 ## I) Reminder of annotated segments
 
-patient: PAT_6 / record:77 / channel: emg6+emg6- / heure: 2020-12-18 13:00:00 à 2020-12-18 14:30:00
+patient: PAT_6 / record:77 / channel: emg6+emg6- / time: 2020-12-18 13:00:00 à 2020-12-18 14:30:00
 patient: PAT_4 / record: 11/ channel: ECG1+ECG1- / time: 2020-12-15 21:50:00 à 2020-12-15 22:50:00
-patient: PAT_2 / record: _3 / channel: / EMG1+EMG1- / heure : 2020-12-14 21:55:00 à 2020-12-14 23:05:00
+patient: PAT_2 / record: _3 / channel:  EMG1+EMG1- / time : 2020-12-14 21:55:00 à 2020-12-14 23:05:00
 
 
 ## II) Individual scripts
