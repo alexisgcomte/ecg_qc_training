@@ -65,11 +65,14 @@ def generation_annot_list(df: pd.DataFrame,
     return list_classif
 
 
-def make_result_df(ids: list,
-                   record: int,
+def make_result_df(ids: str,
+                   record: str,
                    channel: str,
                    start_date: str,
                    end_date: str):
+
+    ids = [int(annotator) for annotator in
+                  re.split(',', ids)]
 
     # Compute for annotators the concordance
 
@@ -120,13 +123,14 @@ if __name__ == '__main__':
     parser.add_argument("-ids", "--annot_ids", dest="annot_ids",
                         help="ids of annotators", metavar="FILE")
     parser.add_argument("-o", "--output_folder", dest="output_folder",
-                        help="output_folder_for_ddf", metavar="FILE",
+                        help="output_folder_for_df", metavar="FILE",
                         default="./exports")
 
     args = parser.parse_args()
-    annotators = [int(annotator) for annotator in
-                  re.split(',', args.annot_ids)]
-    df = make_result_df(ids=annotators,
+
+
+
+    df = make_result_df(ids=args.annot_ids,
                         record=args.record,
                         channel=args.channel,
                         start_date=args.start_time,

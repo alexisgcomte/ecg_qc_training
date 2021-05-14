@@ -138,3 +138,7 @@ dags/tasks/test.ipynb
 
 # Parameter files
 .vscode/
+FOLDER_PATH
+airflow-webserver.pid
+airflow.db
+logs/
