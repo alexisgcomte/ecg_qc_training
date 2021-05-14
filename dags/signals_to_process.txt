@@ -10,7 +10,7 @@
  "1":
     {"patient": "PAT_4",
     "record": "11",
-    "segment": "?",
+    "segment": "s1",
     "channel": "ECG1+ECG1-",
     "ids": "2,3,4",
     "start_time": "2020-12-15 21:50:00",
@@ -19,7 +19,7 @@
 "3":
     {"patient": "PAT_2",
     "record": "3",
-    "segment": "?",
+    "segment": "s1",
     "channel": "EMG1+EMG1-",
     "ids": "2,3,4",
     "start_time": "2020-12-14 21:55:00",

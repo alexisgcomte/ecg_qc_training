@@ -45,7 +45,6 @@ if __name__ == '__main__':
                                    start_date=args.start_time,
                                    end_date=args.end_time)
 
-
     df = pd.concat([df_ecg, df_annotation], axis=1).dropna()
 
     df.to_csv(args.output_folder +

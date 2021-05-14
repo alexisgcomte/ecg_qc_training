@@ -71,8 +71,7 @@ def make_result_df(ids: str,
                    start_date: str,
                    end_date: str):
 
-    ids = [int(annotator) for annotator in
-                  re.split(',', ids)]
+    ids = [int(annotator) for annotator in re.split(',', ids)]
 
     # Compute for annotators the concordance
 
@@ -127,8 +126,6 @@ if __name__ == '__main__':
                         default="./exports")
 
     args = parser.parse_args()
-
-
 
     df = make_result_df(ids=args.annot_ids,
                         record=args.record,
