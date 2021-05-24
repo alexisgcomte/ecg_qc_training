@@ -75,7 +75,7 @@ def make_result_df(ids: str,
 
     # Compute for annotators the concordance
 
-    query = sql_query('credentials.csv')
+    query = sql_query('/home/aura-alexis/github/ecg_qc_training/credentials.csv')
 
     start_date = pd.Timestamp(start_date)
     end_date = pd.Timestamp(end_date)

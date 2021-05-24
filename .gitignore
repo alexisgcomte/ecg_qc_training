@@ -135,6 +135,10 @@ exports/
 
 # Working files
 dags/tasks/test.ipynb
+*.out
+*.pid
+*.err
+
 
 # Parameter files
 .vscode/

@@ -58,7 +58,4 @@ airflow db init
 ```
 
 airflow webserver
-
 airflow scheduler
-
-DL credentials
