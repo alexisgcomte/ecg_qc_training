@@ -36,3 +36,29 @@ Exemple of use:
 ```python
 python3 dags/tasks/create_ecg_dataset.py -p PAT_6 -r 77 -s s1 -c ECG1+ECG1- -ids 2,3,4 -st '2020-12-18 13:00:00' -et '2020-12-18 14:30:00'
 ```
+
+
+```bash
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+export AIRFLOW_HOME=$(pwd)
+export AIRFLOW_CONFIG=$AIRFLOW_HOME/airflow.cfg
+```
+
+```bash
+airflow db init
+```
+
+```bash
+ airflow users create \
+    --username admin \
+    --firstname Firstname \
+    --lastname Lastname \
+    --role Admin \
+    --email admin@admin.org
+```
+
+airflow webserver
+
+airflow scheduler
+
+DL credentials
