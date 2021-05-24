@@ -2,6 +2,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 import argparse
 import re
+import os
 
 
 class sql_query:
@@ -74,8 +75,11 @@ def make_result_df(ids: str,
     ids = [int(annotator) for annotator in re.split(',', ids)]
 
     # Compute for annotators the concordance
+    if "AIRFLOW_HOME" in os.environ:
+        query = sql_query(f'{os.environ["AIRFLOW_HOME"]}/credentials.csv')
 
-    query = sql_query('/home/aura-alexis/github/ecg_qc_training/credentials.csv')
+    else:
+        query = sql_query('credentials.csv')
 
     start_date = pd.Timestamp(start_date)
     end_date = pd.Timestamp(end_date)

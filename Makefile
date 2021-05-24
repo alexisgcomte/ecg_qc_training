@@ -1,7 +1,7 @@
 FOLDER_PATH= .
 
 init_airflow:
-	source $(FOLDER_PATH)/source.sh;\
+	source $(FOLDER_PATH)/env.sh;\
 	airflow db init;\
 	airflow users create \
 		--username admin \
@@ -11,6 +11,6 @@ init_airflow:
 		--email admin@admin.org;\
 
 start_airflow:
-	source $(FOLDER_PATH)/source.sh;\
+	source $(FOLDER_PATH)/env.sh;\
 	airflow scheduler -D;\
 	airflow webserver;\
