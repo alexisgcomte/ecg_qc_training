@@ -1,3 +1,4 @@
+import argparse
 import pandas as pd
 import numpy as np
 import sys
@@ -6,15 +7,14 @@ from tqdm import tqdm
 sys.path.append(str(Path(sys.path[0]).parent.parent))
 from ecg_qc.ecg_qc import ecg_qc
 
-# sys arg
-
 window = 9
+concensus_ratio = 0.7
 sampling_frequency = 256
 
-# Function declaration
+
 def quality_classification(annotations: list,
                            treshold: float = 0.7) -> int:
-    
+
     # noise treshold
 
     if np.mean(annotations) >= treshold:
@@ -22,9 +22,21 @@ def quality_classification(annotations: list,
     else:
         return 0
 
+
+def concensus_creation(df_annot: pd.DataFrame,
+                       concensus_ratio: float = 0.7) -> pd.DataFrame:
+
+    df_annot['concensus'] = df_annot.mean(axis=1)
+    df_annot['concensus'] = df_annot['concensus'].apply(
+        lambda x: 1 if x >= concensus_ratio else 0)
+
+    return df_annot
+
+
 def compute_sqi(df_ecg: pd.DataFrame,
-                window: str = int,
-                sampling_frequency: int = sampling_frequency) -> [float]:
+                window: int = 9,
+                concensus_ratio: float = 0.7,
+                sampling_frequency: int = sampling_frequency) -> pd.DataFrame:
 
     df_ml = pd.DataFrame(columns=['timestamp_start', 'timestamp_end',
                                   'qSQI_score', 'cSQI_score',
@@ -32,7 +44,8 @@ def compute_sqi(df_ecg: pd.DataFrame,
                                   'pSQI_score', 'basSQI_score'])
 
     df_annot = pd.DataFrame()
-    
+    annotators = df_ecg.columns.drop('signal')
+
     ecg_qc_class = ecg_qc()
     print('computing SQI')
 
@@ -45,9 +58,10 @@ def compute_sqi(df_ecg: pd.DataFrame,
         sqi_scores = ecg_qc_class.compute_sqi_scores(
             ecg_signal=df_ecg['signal'][start:end].values)
 
-
-        df_ml = df_ml.append({'timestamp_start': df_ecg['signal'][start:end].index[0],
-                              'timestamp_end': df_ecg['signal'][start:end].index[-1],
+        df_ml = df_ml.append({'timestamp_start': df_ecg['signal']
+                              [start:end].index[0],
+                              'timestamp_end': df_ecg['signal']
+                              [start:end].index[-1],
                               'qSQI_score': sqi_scores[0][0],
                               'cSQI_score': sqi_scores[0][1],
                               'sSQI_score': sqi_scores[0][2],
@@ -59,19 +73,17 @@ def compute_sqi(df_ecg: pd.DataFrame,
         # Adding annotators
         # df_annot = pd.DataFrame(columns=df_ecg.columns.drop('signal'))
 
-        annotations  = [quality_classification(
+        annotations = [quality_classification(
             df_ecg[annotator][start:end].values,
-            treshold = 0.7) for annotator in df_ecg.columns.drop('signal')]
+            treshold=0.7) for annotator in annotators]
         df_annot = df_annot.append([annotations], ignore_index=True)
-        
+
     df_annot.reset_index()
-    df_annot.columns = df_ecg.columns.drop('signal')
+    df_annot.columns = annotators
+    df_annot = concensus_creation(df_annot, concensus_ratio=concensus_ratio)
     # Ajout du concensus
 
     df_ml = pd.concat([df_ml, df_annot],  axis=1)
-
-    # df_ml['timestamp_start'] = df_ml['timestamp_start'].astype(int)
-    # df_ml['timestamp_end'] = df_ml['timestamp_end'].astype(int)
 
     return df_ml
 
@@ -91,46 +103,30 @@ def classification_correspondance_avg(timestamp,
 
 if __name__ == '__main__':
 
+    parser = argparse.ArgumentParser(description='input parameters')
+    parser.add_argument("-w", "--window", dest="window",
+                        help="time window in sec for split", metavar="FILE")
+    parser.add_argument("-c", "--concensus_ratio", dest="concensus_ratio",
+                        help="percentage of agreement for concensus",
+                        metavar="FILE")
+    parser.add_argument("-sf", "--sampling_frequency",
+                        dest="sampling_frequency",
+                        help="sampling_frequency_of_file", metavar="FILE")
+    parser.add_argument("-i", "--input_file", dest="input_file",
+                        help="dafaframe to load", metavar="FILE")
+    parser.add_argument("-o", "--output_folder", dest="output_folder",
+                        help="output_folder_for_ddf", metavar="FILE",
+                        default="./exports")
 
-#     i = 1
-#     while i < len(sys.argv):
-#         if sys.argv[i] == '-patient' and i < len(sys.argv)-1:
-#             patient = sys.argv[i+1]
-#             i += 2
-#         elif sys.argv[i] == '-window' and i < len(sys.argv)-1:
-#             window = int(sys.argv[i+1])
-#             i += 2
-#         elif sys.argv[i] == '-sampling_frequency' and i < len(sys.argv)-1:
-#             sampling_frequency = int(sys.argv[i+1])
-#             i += 2
-#         elif sys.argv[i] == '-input_data_folder' and i < len(sys.argv)-1:
-#             input_data_folder = sys.argv[i+1]
-#             i += 2
-#         elif sys.argv[i] == '-output_folder' and i < len(sys.argv)-1:
-#             output_folder = sys.argv[i+1]
-#             i += 2
-#         else:
-#             print('Unknown argument' + str(sys.argv[i]))
-#             break
+    args = parser.parse_args()
 
-
-    df_ecg = pd.read_csv('/home/aura-alexis/github/ecg_qc_training/exports/final_df.csv', 
+    df_ecg = pd.read_csv(args.input_file,
                          index_col=0)
-    df_ecg[df_ecg.columns.drop('signal')] = df_ecg[df_ecg.columns.drop('signal')].astype(int)
-
-    df_ecg = df_ecg.iloc[:100_000]
 
     df_ml = compute_sqi(df_ecg=df_ecg,
-                        window=window,
-                        sampling_frequency=sampling_frequency)
+                        window=int(args.window),
+                        concensus_ratio=float(args.concensus_ratio),
+                        sampling_frequency=int(args.sampling_frequency))
 
-    print(df_ml.head())
-
-
-   #  df_ml['classif_avg'] = df_ml['timestamp_start'].apply(
-   #      lambda x: classification_correspondance_avg(x, window=9))
-# 
-   #  df_ml.to_csv('{}/df_ml_{}.csv'.format(output_folder, patient),
-   #               index=False)
-# 
-   #  print('done!')
+    df_ml.to_csv(f'{args.output_folder}/df_consolidated_concensus.csv',
+                 index=False)

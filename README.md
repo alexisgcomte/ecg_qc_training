@@ -59,3 +59,7 @@ airflow db init
 
 airflow webserver
 airflow scheduler
+
+
+
+python3 dags/tasks/ml_dataset_creation.py -w 9 -c 0.7 -sf 256 -i ./exports/df_consolidated.csv -o ./exports
