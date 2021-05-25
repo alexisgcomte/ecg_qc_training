@@ -13,11 +13,11 @@ sampling_frequency = 256
 
 
 def quality_classification(annotations: list,
-                           treshold: float = 0.7) -> int:
+                           quality_treshold: float = 0.5) -> int:
 
     # noise treshold
 
-    if np.mean(annotations) >= treshold:
+    if np.mean(annotations) >= quality_treshold:
         return 1
     else:
         return 0
@@ -36,6 +36,7 @@ def concensus_creation(df_annot: pd.DataFrame,
 def compute_sqi(df_ecg: pd.DataFrame,
                 window: int = 9,
                 concensus_ratio: float = 0.7,
+                quality_treshold: float = 0.5,
                 sampling_frequency: int = sampling_frequency) -> pd.DataFrame:
 
     df_ml = pd.DataFrame(columns=['timestamp_start', 'timestamp_end',
@@ -75,7 +76,7 @@ def compute_sqi(df_ecg: pd.DataFrame,
 
         annotations = [quality_classification(
             df_ecg[annotator][start:end].values,
-            treshold=0.7) for annotator in annotators]
+            quality_treshold=quality_treshold) for annotator in annotators]
         df_annot = df_annot.append([annotations], ignore_index=True)
 
     df_annot.reset_index()
@@ -126,6 +127,7 @@ if __name__ == '__main__':
     df_ml = compute_sqi(df_ecg=df_ecg,
                         window=int(args.window),
                         concensus_ratio=float(args.concensus_ratio),
+                        quality_treshold=0.7,
                         sampling_frequency=int(args.sampling_frequency))
 
     df_ml.to_csv(f'{args.output_folder}/df_consolidated_concensus.csv',

@@ -146,3 +146,4 @@ FOLDER_PATH
 airflow-webserver.pid
 airflow.db
 logs/
+dags/tasks/working_notebook.ipynb

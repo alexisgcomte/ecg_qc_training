@@ -37,29 +37,11 @@ Exemple of use:
 python3 dags/tasks/create_ecg_dataset.py -p PAT_6 -r 77 -s s1 -c ECG1+ECG1- -ids 2,3,4 -st '2020-12-18 13:00:00' -et '2020-12-18 14:30:00'
 ```
 
+### 4) make_concensus
 
-```bash
-export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-export AIRFLOW_HOME=$(pwd)
-export AIRFLOW_CONFIG=$AIRFLOW_HOME/airflow.cfg
-```
+Compute SQL for merge dataset and concensus.
 
-```bash
-airflow db init
-```
-
-```bash
- airflow users create \
-    --username admin \
-    --firstname Firstname \
-    --lastname Lastname \
-    --role Admin \
-    --email admin@admin.org
-```
-
-airflow webserver
-airflow scheduler
-
-
-
+Exemple of use:
+```python
 python3 dags/tasks/ml_dataset_creation.py -w 9 -c 0.7 -sf 256 -i ./exports/df_consolidated.csv -o ./exports
+```
