@@ -3,9 +3,12 @@ from airflow.utils.dates import days_ago
 from tasks.import_annotations import make_result_df
 from tasks.import_ecg_segment import EdfLoader
 from tasks.ml_dataset_creation import compute_sqi
+from tasks.train_model import train_model
 import pandas as pd
 import json
 import os
+import itertools
+
 
 # Parameters
 folder = os.environ['AIRFLOW_HOME']
@@ -32,7 +35,7 @@ parameters = [[param_json[signal]['patient'],
 @dag(default_args=default_args,
      schedule_interval=None,
      start_date=days_ago(1),
-     tags=['ecg_qc', 'preprocessing', 'extraction', 'testing5'])
+     tags=['ecg_qc', 'preprocessing', 'extraction', 'testing_ml_param_final'])
 def dag_extract_ecg_annotation():
 
     @task(depends_on_past=False)
@@ -122,6 +125,19 @@ def dag_extract_ecg_annotation():
 
         return df_consensus
 
+    @task(depends_on_past=True)
+    def ml_training(df: pd.DataFrame,
+                    mlruns_dir: str = f'{folder}/mlruns/',
+                    window: int = 9,
+                    consensus_ratio: float = 0.7,
+                    quality_treshold: float = 0.7):
+
+        train_model(df=df,
+                    mlruns_dir=mlruns_dir,
+                    window=window,
+                    consensus_ratio=consensus_ratio,
+                    quality_treshold=quality_treshold)
+
     # Process Pipeline
 
     dfs_merge = [merge_dataframe(extract_ecg(*parameters[index]),
@@ -131,14 +147,24 @@ def dag_extract_ecg_annotation():
     df_consolidated = merge_all_df(dfs_merge)
 
     # Parameter combination and comprehension list
-    window = 9
-    consensus_ratio = 0.7
-    quality_treshold = 0.7
+    windows = [5, 9]
+    consensus_ratios = [0.5, 0.7]
+    quality_tresholds = [0.5, 0.7]
 
-    make_consensus(df=df_consolidated,
-                   window=window,
-                   consensus_ratio=consensus_ratio,
-                   quality_treshold=quality_treshold)
+    for window, consensus_ratio, quality_treshold in \
+        list(itertools.product(*[windows,
+                                 consensus_ratios,
+                                 quality_tresholds])):
+
+        df_consensus = make_consensus(df=df_consolidated,
+                                      window=window,
+                                      consensus_ratio=consensus_ratio,
+                                      quality_treshold=quality_treshold)
+
+        ml_training(df=df_consensus,
+                    window=window,
+                    consensus_ratio=consensus_ratio,
+                    quality_treshold=quality_treshold)
 
 
 dag_data_extraction = dag_extract_ecg_annotation()

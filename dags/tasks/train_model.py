@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import mlflow
+import os
 
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split, GridSearchCV
@@ -14,13 +15,13 @@ from sklearn.metrics import accuracy_score, f1_score, recall_score,\
 from sklearn.ensemble import RandomForestClassifier
 
 
-temporary_folder = 'temp'
-
-
 def train_model(df: pd.DataFrame,
+                mlruns_dir: str = f'{os.getcwd()}/mlruns',
                 window: int = 9,
                 consensus_ratio: float = 0.7,
                 quality_treshold: float = 0.7):
+
+    mlflow.set_tracking_uri(f'file:///{mlruns_dir}')
 
     with mlflow.start_run():
         df = df.fillna(0)  # To change?
@@ -132,7 +133,7 @@ def train_model(df: pd.DataFrame,
                                          normalize=normalize)
             disp.ax_.set_title(title)
 
-            temp_name = f'{temporary_folder}/{title}.png'
+            temp_name = f'{mlruns_dir}/{title}.png'
             plt.savefig(temp_name)
             mlflow.log_artifact(temp_name, "confusion-matrix-plots")
 
@@ -158,7 +159,7 @@ def train_model(df: pd.DataFrame,
                                          normalize=normalize)
             disp.ax_.set_title(title)
 
-            temp_name = f'{temporary_folder}/{title}.png'
+            temp_name = f'{mlruns_dir}/{title}.png'
             plt.savefig(temp_name)
             mlflow.log_artifact(temp_name, 'confusion-matrix-plots')
 
