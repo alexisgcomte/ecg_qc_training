@@ -7,8 +7,9 @@ from tqdm import tqdm
 sys.path.append(str(Path(sys.path[0]).parent.parent))
 from ecg_qc.ecg_qc import ecg_qc
 
+
 window = 9
-concensus_ratio = 0.7
+consensus_ratio = 0.7
 sampling_frequency = 256
 
 
@@ -23,19 +24,19 @@ def quality_classification(annotations: list,
         return 0
 
 
-def concensus_creation(df_annot: pd.DataFrame,
-                       concensus_ratio: float = 0.7) -> pd.DataFrame:
+def consensus_creation(df_annot: pd.DataFrame,
+                       consensus_ratio: float = 0.7) -> pd.DataFrame:
 
-    df_annot['concensus'] = df_annot.mean(axis=1)
-    df_annot['concensus'] = df_annot['concensus'].apply(
-        lambda x: 1 if x >= concensus_ratio else 0)
+    df_annot['consensus'] = df_annot.mean(axis=1)
+    df_annot['consensus'] = df_annot['consensus'].apply(
+        lambda x: 1 if x >= consensus_ratio else 0)
 
     return df_annot
 
 
 def compute_sqi(df_ecg: pd.DataFrame,
                 window: int = 9,
-                concensus_ratio: float = 0.7,
+                consensus_ratio: float = 0.7,
                 quality_treshold: float = 0.5,
                 sampling_frequency: int = sampling_frequency) -> pd.DataFrame:
 
@@ -81,8 +82,8 @@ def compute_sqi(df_ecg: pd.DataFrame,
 
     df_annot.reset_index()
     df_annot.columns = annotators
-    df_annot = concensus_creation(df_annot, concensus_ratio=concensus_ratio)
-    # Ajout du concensus
+    df_annot = consensus_creation(df_annot, consensus_ratio=consensus_ratio)
+    # Ajout du consensus
 
     df_ml = pd.concat([df_ml, df_annot],  axis=1)
 
@@ -107,9 +108,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='input parameters')
     parser.add_argument("-w", "--window", dest="window",
                         help="time window in sec for split", metavar="FILE")
-    parser.add_argument("-c", "--concensus_ratio", dest="concensus_ratio",
-                        help="percentage of agreement for concensus",
+    parser.add_argument("-c", "--consensus_ratio", dest="consensus_ratio",
+                        help="percentage of agreement for consensus",
                         metavar="FILE")
+    parser.add_argument("-q", "--quality_treshold", dest="quality_treshold",
+                        help="treshold to determine quality", metavar="FILE")
     parser.add_argument("-sf", "--sampling_frequency",
                         dest="sampling_frequency",
                         help="sampling_frequency_of_file", metavar="FILE")
@@ -126,9 +129,9 @@ if __name__ == '__main__':
 
     df_ml = compute_sqi(df_ecg=df_ecg,
                         window=int(args.window),
-                        concensus_ratio=float(args.concensus_ratio),
-                        quality_treshold=0.7,
+                        consensus_ratio=float(args.consensus_ratio),
+                        quality_treshold=float(args.quality_treshold),
                         sampling_frequency=int(args.sampling_frequency))
 
-    df_ml.to_csv(f'{args.output_folder}/df_consolidated_concensus.csv',
+    df_ml.to_csv(f'{args.output_folder}/df_consolidated_consensus.csv',
                  index=False)

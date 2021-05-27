@@ -45,3 +45,32 @@ Exemple of use:
 ```python
 python3 dags/tasks/ml_dataset_creation.py -w 9 -c 0.7 -sf 256 -i ./exports/df_consolidated.csv -o ./exports
 ```
+
+### 5) train_model
+
+From previous csv, train a model and logs it in MLFlows.
+
+Exemple of use:
+```python
+python3 dags/tasks/train_model.py -w 9 -c 0.7 -q 0.7 -i ./exports/df_consensus.csv
+```
+
+exports/df_consolidated_concensus.csv
+
+
+## III) Using Airflow and MLFlow
+
+The first time:
+```bash
+make init_airflow
+```
+
+Starting Airflow:
+```bash
+make start_airflow
+```
+
+Starting MLFlow:
+```bash
+mlflow ui
+```

@@ -10,9 +10,6 @@ import os
 # Parameters
 folder = os.environ['AIRFLOW_HOME']
 output_folder = f'{folder}/exports'
-window = 9
-concensus_ratio = 0.7
-sampling_frequency = 256
 
 default_args = {'owner': 'airflow',
                 'depends_on_past': False,
@@ -35,7 +32,7 @@ parameters = [[param_json[signal]['patient'],
 @dag(default_args=default_args,
      schedule_interval=None,
      start_date=days_ago(1),
-     tags=['ecg_qc', 'preprocessing', 'extraction', 'testing'])
+     tags=['ecg_qc', 'preprocessing', 'extraction', 'testing5'])
 def dag_extract_ecg_annotation():
 
     @task(depends_on_past=False)
@@ -109,19 +106,21 @@ def dag_extract_ecg_annotation():
         return df
 
     @task(depends_on_past=True)
-    def make_concensus(df: pd.DataFrame,
+    def make_consensus(df: pd.DataFrame,
                        window: int = 9,
-                       concensus_ratio: float = 0.7,
+                       consensus_ratio: float = 0.7,
+                       quality_treshold: float = 0.7,
                        sampling_frequency: int = 256):
 
-        df_concensus = compute_sqi(df_ecg=df,
+        df_consensus = compute_sqi(df_ecg=df,
                                    window=window,
-                                   concensus_ratio=concensus_ratio,
+                                   consensus_ratio=consensus_ratio,
+                                   quality_treshold=quality_treshold,
                                    sampling_frequency=sampling_frequency)
 
-        df_concensus.to_csv(f'{output_folder}/df_concensus.csv')
+        df_consensus.to_csv(f'{output_folder}/df_consensus.csv')
 
-        return df_concensus
+        return df_consensus
 
     # Process Pipeline
 
@@ -130,8 +129,16 @@ def dag_extract_ecg_annotation():
                  for index, _ in enumerate(parameters)]
 
     df_consolidated = merge_all_df(dfs_merge)
+
     # Parameter combination and comprehension list
-    make_concensus(df=df_consolidated)
+    window = 9
+    consensus_ratio = 0.7
+    quality_treshold = 0.7
+
+    make_consensus(df=df_consolidated,
+                   window=window,
+                   consensus_ratio=consensus_ratio,
+                   quality_treshold=quality_treshold)
 
 
 dag_data_extraction = dag_extract_ecg_annotation()

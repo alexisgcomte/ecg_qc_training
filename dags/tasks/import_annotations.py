@@ -41,13 +41,13 @@ def generation_annot_list(df: pd.DataFrame,
                           start_date: pd.Timestamp,
                           end_date: pd.Timestamp) -> list:
 
-    # Create list to compare annotations
+    # Create list to compare annotations, 1 for good quality, 0 for noise
 
     hz = 256
     duration = end_date - start_date
     point_count = int(round(duration / (pd.Timedelta(seconds=1/hz)), 0))
 
-    list_classif = ['0'] * point_count
+    list_classif = ['1'] * point_count
 
     for i in range(df.shape[0]):
 
@@ -61,7 +61,7 @@ def generation_annot_list(df: pd.DataFrame,
             - start_date).value/(1_000_000 * 1_000 / hz),
             0)) + 1
 
-        list_classif[start_index:end_index] = ['1'] * (end_index - start_index)
+        list_classif[start_index:end_index] = ['0'] * (end_index - start_index)
 
     return list_classif
 
