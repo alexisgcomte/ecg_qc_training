@@ -60,6 +60,15 @@ exports/df_consolidated_concensus.csv
 
 ## III) Using Airflow and MLFlow
 
+Start PostgreSQL server:
+```bash
+source env/bin/activate
+source env.sh
+docker-compose up -d
+```
+
+In Python venv:
+
 The first time:
 ```bash
 make init_airflow
