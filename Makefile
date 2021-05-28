@@ -12,5 +12,5 @@ init_airflow:
 
 start_airflow:
 	source $(FOLDER_PATH)/env.sh;\
-	airflow scheduler -D;\
-	airflow webserver;\
+	airflow scheduler & airflow webserver
+
