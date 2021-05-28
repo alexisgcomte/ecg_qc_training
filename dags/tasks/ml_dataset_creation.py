@@ -40,16 +40,12 @@ def compute_sqi(df_ecg: pd.DataFrame,
                 quality_treshold: float = 0.5,
                 sampling_frequency: int = sampling_frequency) -> pd.DataFrame:
 
-    df_ml = pd.DataFrame(columns=['timestamp_start', 'timestamp_end',
+    df_sqi = pd.DataFrame(columns=['timestamp_start', 'timestamp_end',
                                   'qSQI_score', 'cSQI_score',
                                   'sSQI_score', 'kSQI_score',
                                   'pSQI_score', 'basSQI_score'])
 
-    df_annot = pd.DataFrame()
-    annotators = df_ecg.columns.drop('signal')
-
     ecg_qc_class = ecg_qc()
-    print('computing SQI')
 
     for i in tqdm(range(int(round(
             df_ecg.shape[0] / (window * sampling_frequency),
@@ -60,21 +56,36 @@ def compute_sqi(df_ecg: pd.DataFrame,
         sqi_scores = ecg_qc_class.compute_sqi_scores(
             ecg_signal=df_ecg['signal'][start:end].values)
 
-        df_ml = df_ml.append({'timestamp_start': df_ecg['signal']
-                              [start:end].index[0],
-                              'timestamp_end': df_ecg['signal']
-                              [start:end].index[-1],
-                              'qSQI_score': sqi_scores[0][0],
-                              'cSQI_score': sqi_scores[0][1],
-                              'sSQI_score': sqi_scores[0][2],
-                              'kSQI_score': sqi_scores[0][3],
-                              'pSQI_score': sqi_scores[0][4],
-                              'basSQI_score': sqi_scores[0][5]},
-                             ignore_index=True)
+        df_sqi = df_sqi.append({'timestamp_start': df_ecg['signal']
+                                [start:end].index[0],
+                                'timestamp_end': df_ecg['signal']
+                                [start:end].index[-1],
+                                'qSQI_score': sqi_scores[0][0],
+                                'cSQI_score': sqi_scores[0][1],
+                                'sSQI_score': sqi_scores[0][2],
+                                'kSQI_score': sqi_scores[0][3],
+                                'pSQI_score': sqi_scores[0][4],
+                                'basSQI_score': sqi_scores[0][5]},
+                               ignore_index=True)
 
-        # Adding annotators
-        # df_annot = pd.DataFrame(columns=df_ecg.columns.drop('signal'))
+    return df_sqi
 
+def compute_quality(df_ecg: pd.DataFrame,
+                    window: int = 9,
+                    consensus_ratio: float = 0.7,
+                    quality_treshold: float = 0.5,
+                    sampling_frequency: int = sampling_frequency) -> pd.DataFrame:
+
+
+    df_annot = pd.DataFrame()
+    annotators = df_ecg.columns.drop('signal')
+
+    for i in tqdm(range(int(round(
+            df_ecg.shape[0] / (window * sampling_frequency),
+            0)))):
+
+        start = i * window * sampling_frequency
+        end = start + window * sampling_frequency
         annotations = [quality_classification(
             df_ecg[annotator][start:end].values,
             quality_treshold=quality_treshold) for annotator in annotators]
@@ -82,12 +93,21 @@ def compute_sqi(df_ecg: pd.DataFrame,
 
     df_annot.reset_index()
     df_annot.columns = annotators
+
+    return df_annot
+
+def make_consensus_and_conso(df_sqi: pd.DataFrame,
+                            df_annot: pd.DataFrame,
+                            window: int = 9,
+                            consensus_ratio: float = 0.7,
+                            quality_treshold: float = 0.5,
+                            sampling_frequency: int = sampling_frequency) \
+                                -> pd.DataFrame:
+
     df_annot = consensus_creation(df_annot, consensus_ratio=consensus_ratio)
-    # Ajout du consensus
+    df_conso = pd.concat([df_sqi, df_annot],  axis=1)
 
-    df_ml = pd.concat([df_ml, df_annot],  axis=1)
-
-    return df_ml
+    return df_conso
 
 
 def classification_correspondance_avg(timestamp,
@@ -127,6 +147,8 @@ if __name__ == '__main__':
     df_ecg = pd.read_csv(args.input_file,
                          index_col=0)
 
+
+    # TO UPDATE
     df_ml = compute_sqi(df_ecg=df_ecg,
                         window=int(args.window),
                         consensus_ratio=float(args.consensus_ratio),

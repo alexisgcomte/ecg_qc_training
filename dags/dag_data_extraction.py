@@ -2,7 +2,8 @@ from airflow.decorators import dag, task
 from airflow.utils.dates import days_ago
 from tasks.import_annotations import make_result_df
 from tasks.import_ecg_segment import EdfLoader
-from tasks.ml_dataset_creation import compute_sqi
+from tasks.ml_dataset_creation import compute_sqi, compute_quality, \
+                                      make_consensus_and_conso
 from tasks.train_model import train_model
 import pandas as pd
 import json
@@ -35,7 +36,7 @@ parameters = [[param_json[signal]['patient'],
 @dag(default_args=default_args,
      schedule_interval=None,
      start_date=days_ago(1),
-     tags=['ecg_qc', 'preprocessing', 'extraction', 'testing_ml_param_final'])
+     tags=['ecg_qc', 'preprocessing', 'extraction', 'optimized2'])
 def dag_extract_ecg_annotation():
 
     @task(depends_on_past=False)
@@ -109,21 +110,58 @@ def dag_extract_ecg_annotation():
         return df
 
     @task(depends_on_past=True)
-    def make_consensus(df: pd.DataFrame,
+    def t_compute_sqi(df: pd.DataFrame,
                        window: int = 9,
                        consensus_ratio: float = 0.7,
                        quality_treshold: float = 0.7,
                        sampling_frequency: int = 256):
 
-        df_consensus = compute_sqi(df_ecg=df,
+        df_sqi = compute_sqi(df_ecg=df,
                                    window=window,
                                    consensus_ratio=consensus_ratio,
                                    quality_treshold=quality_treshold,
                                    sampling_frequency=sampling_frequency)
 
-        df_consensus.to_csv(f'{output_folder}/df_consensus.csv')
+#        df_consensus.to_csv(f'{output_folder}/df_consensus.csv')
 
-        return df_consensus
+        return df_sqi
+
+    @task(depends_on_past=True)
+    def t_compute_quality(df: pd.DataFrame,
+                          window: int = 9,
+                          consensus_ratio: float = 0.7,
+                          quality_treshold: float = 0.7,
+                          sampling_frequency: int = 256):
+
+        df_annot = compute_quality(df_ecg=df,
+                                   window=window,
+                                   consensus_ratio=consensus_ratio,
+                                   quality_treshold=quality_treshold,
+                                   sampling_frequency=sampling_frequency)
+
+#        df_consensus.to_csv(f'{output_folder}/df_consensus.csv')
+
+        return df_annot
+
+    @task(depends_on_past=True)
+    def t_make_consensus_and_conso(df_sqi: pd.DataFrame,
+                            df_annot: pd.DataFrame,
+                          window: int = 9,
+                          consensus_ratio: float = 0.7,
+                          quality_treshold: float = 0.7,
+                          sampling_frequency: int = 256):
+
+        df_conso = make_consensus_and_conso(
+            df_sqi=df_sqi,
+            df_annot=df_annot,
+            window=window,
+            consensus_ratio=consensus_ratio,
+            quality_treshold=quality_treshold,
+            sampling_frequency=sampling_frequency)
+
+#        df_consensus.to_csv(f'{output_folder}/df_consensus.csv')
+
+        return df_conso
 
     @task(depends_on_past=True)
     def ml_training(df: pd.DataFrame,
@@ -147,24 +185,29 @@ def dag_extract_ecg_annotation():
     df_consolidated = merge_all_df(dfs_merge)
 
     # Parameter combination and comprehension list
-    windows = [5, 9]
+    windows = [2, 3 , 4, 6, 9]
     consensus_ratios = [0.5, 0.7]
-    quality_tresholds = [0.5, 0.7]
+    quality_tresholds = [0.2, 0,4, 0,6, 0.8]
 
-    for window, consensus_ratio, quality_treshold in \
-        list(itertools.product(*[windows,
-                                 consensus_ratios,
-                                 quality_tresholds])):
+    for window in windows:
+        df_sqi = t_compute_sqi(df=df_consolidated,
+                               window=window)
+        
+        for quality_treshold in quality_tresholds:
 
-        df_consensus = make_consensus(df=df_consolidated,
-                                      window=window,
-                                      consensus_ratio=consensus_ratio,
-                                      quality_treshold=quality_treshold)
+            df_annot = t_compute_quality(df=df_consolidated,
+                                         quality_treshold=quality_treshold)
+    
+            for consensus_ratio in consensus_ratios:
+                df_conso = t_make_consensus_and_conso(
+                    df_sqi=df_sqi,
+                    df_annot=df_annot,
+                    consensus_ratio=consensus_ratio)
 
-        ml_training(df=df_consensus,
-                    window=window,
-                    consensus_ratio=consensus_ratio,
-                    quality_treshold=quality_treshold)
+                ml_training(df=df_conso,
+                            window=window,
+                            consensus_ratio=consensus_ratio,
+                            quality_treshold=quality_treshold)
 
 
 dag_data_extraction = dag_extract_ecg_annotation()
