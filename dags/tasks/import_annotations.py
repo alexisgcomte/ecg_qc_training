@@ -1,3 +1,20 @@
+"""import_annotations script
+
+This script connects to SQL database to request annotators noise
+classifications, wrangle data into proper DataFrame format and export
+it to CSV.
+
+This file can also be imported as a module and contains the following
+functions:
+
+    * sql_query - makes noise annotation SQL request
+    * generation_annot_list - transform noise information to a list same
+    sampling rate as ECG
+    * make_annot_df - use sql_query and generation_annot_list to create a
+    DataFrame of annotations by annotator with same sampling rate as ECG
+    * main - the main function of the script
+"""
+
 import pandas as pd
 from sqlalchemy import create_engine
 import argparse
@@ -6,59 +23,108 @@ import os
 
 
 class sql_query:
+    """
+    A class to make SQL request of all noise annotations for a channel and
+    a record
+    """
 
-    # class to make SQL request for an annotation
-    # TO DO: add annotation and segment? emg6+emg6- par ex
-
-    def __init__(self, credentials_path):
-        self.db_credentials = pd.read_csv(credentials_path, index_col="Field")
+    def __init__(self, credentials_path: str):
+        """
+        Parameters
+        ----------
+        credentials_path : str
+            Path to load credentials to connect to SQL database. The CSV must
+            include for columns Field,Value : user, password, host
+        """
+        self.db_credentials = pd.read_csv(credentials_path, index_col='Field')
 
     def __call__(self,
                  start_date: pd.Timestamp,
                  end_date: pd.Timestamp,
                  text: str) -> pd.DataFrame:
+        """Make an SQL request to get all availiable annotations within
+        start and end dates filtered by a channel and a record
+
+        Parameters
+        ----------
+        start_date : pd.Timestamp
+            Start of the ECG signal to filter
+        end_date : pd.Timestamp
+            Start of the ECG signal to filter
+        text : str
+            Field "text" of the SQL table to filter. Combines channel and
+            record with formatting 'channel record'
+
+        Returns
+        -------
+        df_sql : pd.DataFrame
+            DataFrame with noise annotations by user_id with start and end
+            time of noise event
+        """
 
         engine = create_engine(
-            "mysql+pymysql://{user}:{pw}@localhost/{db}".format(
-                user=self.db_credentials.loc["user"][0],
-                pw=self.db_credentials.loc["password"][0],
-                db="grafana"))
+            'mysql+pymysql://{user}:{pw}@localhost/{db}'.format(
+                user=self.db_credentials.loc['user'][0],
+                pw=self.db_credentials.loc['password'][0],
+                db='grafana'))
 
-        # TO MODIFY WITH NEW EDF FILE
-        start_date = round(start_date.replace(month=12).value/1_000_000, 0)
-        end_date = round(end_date.replace(month=12).value/1_000_000, 0)
-        df = pd.read_sql(
-            'SELECT * FROM annotation_restitution ' +
-            f'WHERE epoch >= {start_date} ' +
-            f'AND epoch_end < {end_date} ' +
+        # Annotation data is loaded with a difference of one month
+        start_date = round(start_date.replace(month=12).value/1_000_000)
+        end_date = round(end_date.replace(month=12).value/1_000_000)
+        df_sql = pd.read_sql(
+            f'SELECT * FROM annotation_restitution '
+            f'WHERE epoch >= {start_date} '
+            f'AND epoch_end < {end_date} '
             f'AND text = "{text}";',
             engine)
 
-        return df
+        return df_sql
 
 
-def generation_annot_list(df: pd.DataFrame,
+def generation_annot_list(df_user: pd.DataFrame,
                           start_date: pd.Timestamp,
-                          end_date: pd.Timestamp) -> list:
+                          end_date: pd.Timestamp,
+                          sampling_frequency_hz: int = 256) -> list:
+    """From a DataFrame with an annotator noise input, creates a list of
+    boolean noise classfication (1 = good quality, 0 = noise) with the targeted
+    frequency to match ECG sampling rate
 
-    # Create list to compare annotations, 1 for good quality, 0 for noise
+    Parameters
+    ----------
+    df_user : pd.DataFrame
+        DataFrame with annotations of noise for an annotator, with columns
+        'user_id', 'epoch' for start of noise annotation, 'epoch_end' for end
+        of noise annotation
+    start_date : pd.Timestamp
+        Start of the ECG signal to filter
+    end_date : pd.Timestamp
+        Start of the ECG signal to filter
+    sampling_frequency_hz : int
+        The sampling frequency of the ECG signal to match
 
-    hz = 256
+    Returns
+    -------
+    list_classif : list
+        List with same sampling frequency as ECG with boolean indication of
+        noise (1 = good quality, 0 = noise)
+    """
     duration = end_date - start_date
-    point_count = int(round(duration / (pd.Timedelta(seconds=1/hz)), 0))
-
+    point_count = round(
+        duration / pd.Timedelta(seconds=1/sampling_frequency_hz))
+    # List to update afterward with default value  1 = good quality
     list_classif = ['1'] * point_count
 
-    for i in range(df.shape[0]):
+    # Updating noise classifications
+    for i in range(df_user.shape[0]):
 
         start_index = int(round((pd.to_datetime(
-            df['epoch'].iloc[i]/1_000, unit='s')  # .replace(month=11)
+            df_user['epoch'].iloc[i]/1_000, unit='s')
             - start_date).value
-            / (1_000_000 * 1_000 / hz), 0))
+            / (1_000_000 * 1_000 / sampling_frequency_hz), 0))
         end_index = int(round((
             pd.to_datetime(
-                df['epoch_end'].iloc[i]/1_000, unit='s')  # .replace(month=11)
-            - start_date).value/(1_000_000 * 1_000 / hz),
+                df_user['epoch_end'].iloc[i]/1_000, unit='s')
+            - start_date).value/(1_000_000 * 1_000 / sampling_frequency_hz),
             0)) + 1
 
         list_classif[start_index:end_index] = ['0'] * (end_index - start_index)
@@ -66,77 +132,131 @@ def generation_annot_list(df: pd.DataFrame,
     return list_classif
 
 
-def make_result_df(ids: str,
-                   record: str,
-                   channel: str,
-                   start_date: str,
-                   end_date: str):
+def make_annot_df(ids: str,
+                  record: str,
+                  channel: str,
+                  start_date: str,
+                  end_date: str,
+                  sampling_frequency_hz: int = 256) -> pd.DataFrame:
+    """Creates annotations DataFrame through SQL request
 
+    Parameters
+    ----------
+    ids : str
+        Annotators ids to request
+    record : str
+        ECG record to request
+    channel : str
+        ECG channel to request
+    start_date : str
+        Start of the recording to request, format YYYY-MM-DD HH:MM:SS
+    end_date : str
+        End of the recording to request, format YYYY-MM-DD HH:MM:SS
+    sampling_frequency_hz : int
+        The sampling frequency of the ECG signal
+
+    Returns
+    -------
+    df_annot : pd.DataFrame
+        DataFrame with annotators booleans quality classification
+    """
+
+    # Parsing to right format
     ids = [int(annotator) for annotator in re.split(',', ids)]
-
-    # Compute for annotators the concordance
-    if "AIRFLOW_HOME" in os.environ:
-        query = sql_query(f'{os.environ["AIRFLOW_HOME"]}/credentials.csv')
-
-    else:
-        query = sql_query('credentials.csv')
-
     start_date = pd.Timestamp(start_date)
     end_date = pd.Timestamp(end_date)
+    text = f'{channel} {record}'
 
-    text = channel + ' ' + record
-    df = query(start_date, end_date, text)
+    # SQL request
+    if 'AIRFLOW_HOME' in os.environ:
+        query = sql_query(f'{os.environ["AIRFLOW_HOME"]}/credentials.csv')
+    else:
+        query = sql_query('credentials.csv')
+    df_sql = query(start_date=start_date,
+                   end_date=end_date,
+                   text=text)
+    df_sql = df_sql.loc[:, ['user_id', 'epoch', 'epoch_end']]
 
-    df = df.loc[:, ['user_id', 'epoch', 'epoch_end']]
+    # Transforming user_id column in seperate user_id columns
+    dfs_users = [df_sql[df_sql['user_id'] == id] for _, id in enumerate(ids)]
 
-    dfs = [df[df['user_id'] == id] for _, id in enumerate(ids)]
+    list_ids = [generation_annot_list(
+        df_user=df_user,
+        start_date=start_date,
+        end_date=end_date,
+        sampling_frequency_hz=sampling_frequency_hz)
+                for _, df_user in enumerate(dfs_users)]
 
-    list_ids = [generation_annot_list(df, start_date, end_date)
-                for _, df in enumerate(dfs)]
-
-    freq_ns = int(1/256*1_000_000_000)
-    results_df = pd.DataFrame(None,
-                              columns=ids,
-                              index=pd.date_range(start_date,
-                                                  freq=f'{freq_ns}ns',
-                                                  periods=len(list_ids[0]))
-                              )
+    freq_ns = int(1_000_000_000/sampling_frequency_hz)
+    df_annot = pd.DataFrame(None,
+                            columns=ids,
+                            index=pd.date_range(start_date,
+                                                freq=f'{freq_ns}ns',
+                                                periods=len(list_ids[0]))
+                            )
 
     for i, list_id in enumerate(list_ids):
-        results_df[ids[i]] = list_id
+        df_annot[ids[i]] = list_id
 
-    results_df = results_df.astype(int)
+    df_annot = df_annot.astype(int)
 
-    return results_df
+    return df_annot
 
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='input parameters')
-    parser.add_argument("-p", "--patient", dest="patient",
-                        help="patient to load", metavar="FILE")
-    parser.add_argument("-r", "--record", dest="record",
-                        help="record to load", metavar="FILE")
-    parser.add_argument("-c", "--channel", dest="channel",
-                        help="channel to load", metavar="FILE")
-    parser.add_argument("-st", "--start_time", dest="start_time",
-                        help="start time for filter", metavar="FILE")
-    parser.add_argument("-et", "--end_time", dest="end_time",
-                        help="end time for filter", metavar="FILE")
-    parser.add_argument("-ids", "--annot_ids", dest="annot_ids",
-                        help="ids of annotators", metavar="FILE")
-    parser.add_argument("-o", "--output_folder", dest="output_folder",
-                        help="output_folder_for_df", metavar="FILE",
-                        default="./exports")
-
+    parser.add_argument('-p',
+                        '--patient',
+                        dest='patient',
+                        help='patient to load',
+                        metavar='FILE')
+    parser.add_argument('-r',
+                        '--record',
+                        dest='record',
+                        help='record to load',
+                        metavar='FILE')
+    parser.add_argument('-c',
+                        '--channel',
+                        dest='channel',
+                        help='channel to load',
+                        metavar='FILE')
+    parser.add_argument('-st',
+                        '--start_time',
+                        dest='start_time',
+                        help='start time for filter',
+                        metavar='FILE')
+    parser.add_argument('-et',
+                        '--end_time',
+                        dest='end_time',
+                        help='end time for filter',
+                        metavar='FILE')
+    parser.add_argument('-ids',
+                        '--annot_ids',
+                        dest='annot_ids',
+                        help='ids of annotators',
+                        metavar='FILE')
+    parser.add_argument('-o',
+                        '--output_folder',
+                        dest='output_folder',
+                        help='output_folder_for_df',
+                        metavar='FILE',
+                        default='./exports')
+    parser.add_argument('-s', '--sampling_frequency_hz',
+                        dest='sampling_frequency_hz',
+                        help='sampling_frequency_hz_of_file',
+                        metavar='FILE',
+                        default='256')
     args = parser.parse_args()
 
-    df = make_result_df(ids=args.annot_ids,
-                        record=args.record,
-                        channel=args.channel,
-                        start_date=args.start_time,
-                        end_date=args.end_time)
+    df_annot = make_annot_df(ids=args.annot_ids,
+                             record=args.record,
+                             channel=args.channel,
+                             start_date=args.start_time,
+                             end_date=args.end_time,
+                             sampling_frequency_hz=float(
+                                 args.sampling_frequency_hz))
 
-    df.to_csv(args.output_folder +
-              f'/annot_{args.patient}_{args.record}_{args.channel}.csv',
-              index=False)
+    df_annot.to_csv(f'{args.output_folder}/'
+                    f'annot_{args.patient}_{args.record}_{args.channel}.csv',
+                    index=False)

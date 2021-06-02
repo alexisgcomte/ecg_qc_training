@@ -9,7 +9,7 @@ from ecg_qc.ecg_qc import ecg_qc
 
 def compute_sqi(df_ecg: pd.DataFrame,
                 signal_col: str = 'signal',
-                sampling_frequency: int = 256,
+                sampling_frequency_hz: int = 256,
                 window_s: int = 9) -> pd.DataFrame:
     """From a DataFrame of with ecg signal, create a DataFrame with SQIs
     computed for a time window in seconds.
@@ -20,8 +20,8 @@ def compute_sqi(df_ecg: pd.DataFrame,
         DataFrame with ecg_signal, with a constant sampling frequency
     signal_col : str
         Name of the signal column of df_ecg
-    sampling_frequency : int
-        The consensus treshold for classification in boolean class
+    sampling_frequency_hz : int
+        The sampling frequency of the ECG signal
     window_s : int
         Time window in seconds for signal split and SQIs computation
 
@@ -36,10 +36,11 @@ def compute_sqi(df_ecg: pd.DataFrame,
                                    'sSQI_score', 'kSQI_score',
                                    'pSQI_score', 'basSQI_score'])
 
-    for i in range(round(df_ecg.shape[0] / (window_s * sampling_frequency))):
+    for i in range(
+         round(df_ecg.shape[0] / (window_s * sampling_frequency_hz))):
 
-        start_index = i * window_s * sampling_frequency
-        end_index = start_index + window_s * sampling_frequency + 1
+        start_index = i * window_s * sampling_frequency_hz
+        end_index = start_index + window_s * sampling_frequency_hz + 1
         sqi_scores = ecg_qc_class.compute_sqi_scores(
             ecg_signal=df_ecg[signal_col][start_index:end_index].values)
 
@@ -86,7 +87,7 @@ def quality_classification(annotations: list,
 
 def compute_quality(df_ecg: pd.DataFrame,
                     signal_col: str = 'signal',
-                    sampling_frequency: int = 256,
+                    sampling_frequency_hz: int = 256,
                     window_s: int = 9,
                     quality_treshold: float = 0.5) -> pd.DataFrame:
     """From a DataFrame of with ecg signal, create a DataFrame with annotators
@@ -98,8 +99,8 @@ def compute_quality(df_ecg: pd.DataFrame,
         DataFrame with ecg_signal, with a constant sampling frequency
     signal_col : str
         Name of the signal column of df_ecg
-    sampling_frequency : int
-        The consensus treshold for classification in boolean class
+    sampling_frequency_hz : int
+        The sampling frequency of the ECG signal
     window_s : int
         Time window in seconds for signal split and SQIs computation
     quality_treshold : float
@@ -113,10 +114,11 @@ def compute_quality(df_ecg: pd.DataFrame,
     df_annot = pd.DataFrame()
     annotators = df_ecg.columns.drop(signal_col)
 
-    for i in range(round(df_ecg.shape[0] / (window_s * sampling_frequency))):
+    for i in range(
+         round(df_ecg.shape[0] / (window_s * sampling_frequency_hz))):
 
-        start_index = i * window_s * sampling_frequency
-        end_index = start_index + window_s * sampling_frequency + 1
+        start_index = i * window_s * sampling_frequency_hz
+        end_index = start_index + window_s * sampling_frequency_hz + 1
         annotations = [quality_classification(
             df_ecg[annotator][start_index:end_index].values,
             quality_treshold=quality_treshold) for annotator in annotators]
@@ -202,9 +204,9 @@ if __name__ == '__main__':
                         help='output_folder_for_ddf',
                         metavar='FILE',
                         default='./exports')
-    parser.add_argument('-s', '--sampling_frequency',
-                        dest='sampling_frequency',
-                        help='sampling_frequency_of_file',
+    parser.add_argument('-s', '--sampling_frequency_hz',
+                        dest='sampling_frequency_hz',
+                        help='sampling_frequency_hz_of_file',
                         metavar='FILE',
                         default='256')
     parser.add_argument('-w',
@@ -231,18 +233,18 @@ if __name__ == '__main__':
                          index_col=0)
 
     df_sqi = compute_sqi(df_ecg=df_ecg,
-                         sampling_frequency=int(args.sampling_frequency),
+                         sampling_frequency_hz=int(args.sampling_frequency_hz),
                          window_s=int(args.window_s))
 
     df_annot = compute_quality(df_ecg=df_ecg,
-                               sampling_frequency=int(args.sampling_frequency),
+                               sampling_frequency_hz=int(
+                                   args.sampling_frequency_hz),
                                window_s=int(args.window_s),
                                quality_treshold=float(args.quality_treshold))
-
-    df_conso = make_consensus_and_conso(
-                    df_sqi=df_sqi,
-                    df_annot=df_annot,
-                    consensus_treshold=float(args.consensus_treshold))
+    df_conso = make_consensus_and_conso(df_sqi=df_sqi,
+                                        df_annot=df_annot,
+                                        consensus_treshold=float(
+                                            args.consensus_treshold))
 
     df_conso.to_csv(f'{args.output_folder}/df_conso_{int(args.window_s)}'
                     f'_{float(args.quality_treshold)}_'
