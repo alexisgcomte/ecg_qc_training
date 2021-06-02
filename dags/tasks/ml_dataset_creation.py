@@ -3,63 +3,50 @@ import pandas as pd
 import numpy as np
 import sys
 from pathlib import Path
-from tqdm import tqdm
 sys.path.append(str(Path(sys.path[0]).parent.parent))
 from ecg_qc.ecg_qc import ecg_qc
 
 
-window = 9
-consensus_ratio = 0.7
-sampling_frequency = 256
-
-
-def quality_classification(annotations: list,
-                           quality_treshold: float = 0.5) -> int:
-
-    # noise treshold
-
-    if np.mean(annotations) >= quality_treshold:
-        return 1
-    else:
-        return 0
-
-
-def consensus_creation(df_annot: pd.DataFrame,
-                       consensus_ratio: float = 0.7) -> pd.DataFrame:
-
-    df_annot['consensus'] = df_annot.mean(axis=1)
-    df_annot['consensus'] = df_annot['consensus'].apply(
-        lambda x: 1 if x >= consensus_ratio else 0)
-
-    return df_annot
-
-
 def compute_sqi(df_ecg: pd.DataFrame,
-                window: int = 9,
-                consensus_ratio: float = 0.7,
-                quality_treshold: float = 0.5,
-                sampling_frequency: int = sampling_frequency) -> pd.DataFrame:
+                signal_col: str = 'signal',
+                sampling_frequency: int = 256,
+                window_s: int = 9) -> pd.DataFrame:
+    """From a DataFrame of with ecg signal, create a DataFrame with SQIs
+    computed for a time window in seconds.
 
-    df_sqi = pd.DataFrame(columns=['timestamp_start', 'timestamp_end',
-                                  'qSQI_score', 'cSQI_score',
-                                  'sSQI_score', 'kSQI_score',
-                                  'pSQI_score', 'basSQI_score'])
+    Parameters
+    ----------
+    df_ecg : pd.DataFrame
+        DataFrame with ecg_signal, with a constant sampling frequency
+    signal_col : str
+        Name of the signal column of df_ecg
+    sampling_frequency : int
+        The consensus treshold for classification in boolean class
+    window_s : int
+        Time window in seconds for signal split and SQIs computation
 
+    Returns
+    -------
+    df_sqi : pd.DataFrame
+        DataFrame with computed SQIs
+    """
     ecg_qc_class = ecg_qc()
+    df_sqi = pd.DataFrame(columns=['timestamp_start', 'timestamp_end',
+                                   'qSQI_score', 'cSQI_score',
+                                   'sSQI_score', 'kSQI_score',
+                                   'pSQI_score', 'basSQI_score'])
 
-    for i in tqdm(range(int(round(
-            df_ecg.shape[0] / (window * sampling_frequency),
-            0)))):
+    for i in range(round(df_ecg.shape[0] / (window_s * sampling_frequency))):
 
-        start = i * window * sampling_frequency
-        end = start + window * sampling_frequency
+        start_index = i * window_s * sampling_frequency
+        end_index = start_index + window_s * sampling_frequency + 1
         sqi_scores = ecg_qc_class.compute_sqi_scores(
-            ecg_signal=df_ecg['signal'][start:end].values)
+            ecg_signal=df_ecg[signal_col][start_index:end_index].values)
 
-        df_sqi = df_sqi.append({'timestamp_start': df_ecg['signal']
-                                [start:end].index[0],
-                                'timestamp_end': df_ecg['signal']
-                                [start:end].index[-1],
+        df_sqi = df_sqi.append({'timestamp_start': df_ecg[signal_col]
+                                [start_index].index[0],
+                                'timestamp_end': df_ecg[signal_col]
+                                [end_index].index[0],
                                 'qSQI_score': sqi_scores[0][0],
                                 'cSQI_score': sqi_scores[0][1],
                                 'sSQI_score': sqi_scores[0][2],
@@ -70,24 +57,68 @@ def compute_sqi(df_ecg: pd.DataFrame,
 
     return df_sqi
 
+
+def quality_classification(annotations: list,
+                           quality_treshold: float = 0.5) -> bool:
+    """Classify a segment of annotations in a boolean quality, thanks to a
+    treshold. For a list of annotations with same frequency, the treshold
+    is compared with the mean for classification.
+
+    Parameters
+    ----------
+    annotations : list
+        List of the annotations, wich are already booleans
+    quality_treshold : float
+        The quality treshold for quality classification in boolean class
+
+    Returns
+    -------
+    quality : float
+        The classified quality of the annotations with selected treshold
+    """
+    if np.mean(annotations) >= quality_treshold:
+        quality = 1
+    else:
+        quality = 0
+
+    return quality
+
+
 def compute_quality(df_ecg: pd.DataFrame,
-                    window: int = 9,
-                    consensus_ratio: float = 0.7,
-                    quality_treshold: float = 0.5,
-                    sampling_frequency: int = sampling_frequency) -> pd.DataFrame:
+                    signal_col: str = 'signal',
+                    sampling_frequency: int = 256,
+                    window_s: int = 9,
+                    quality_treshold: float = 0.5) -> pd.DataFrame:
+    """From a DataFrame of with ecg signal, create a DataFrame with annotators
+    classification for a time window in seconds.
 
+    Parameters
+    ----------
+    df_ecg : pd.DataFrame
+        DataFrame with ecg_signal, with a constant sampling frequency
+    signal_col : str
+        Name of the signal column of df_ecg
+    sampling_frequency : int
+        The consensus treshold for classification in boolean class
+    window_s : int
+        Time window in seconds for signal split and SQIs computation
+    quality_treshold : float
+        The quality treshold for quality classification in boolean class
 
+    Returns
+    -------
+    df_annot : pd.DataFrame
+        DataFrame with annotators classifications
+    """
     df_annot = pd.DataFrame()
-    annotators = df_ecg.columns.drop('signal')
+    annotators = df_ecg.columns.drop(signal_col)
 
-    for i in tqdm(range(int(round(
-            df_ecg.shape[0] / (window * sampling_frequency),
-            0)))):
+    for i in range(round(df_ecg.shape[0] / (window_s * sampling_frequency))):
 
-        start = i * window * sampling_frequency
-        end = start + window * sampling_frequency
+        start_index = i * window_s * sampling_frequency
+        end_index = start_index + window_s * sampling_frequency + 1
         annotations = [quality_classification(
-            df_ecg[annotator][start:end].values,
+            df_ecg[annotator][start_index:end_index].values,
             quality_treshold=quality_treshold) for annotator in annotators]
         df_annot = df_annot.append([annotations], ignore_index=True)
 
@@ -96,64 +127,124 @@ def compute_quality(df_ecg: pd.DataFrame,
 
     return df_annot
 
-def make_consensus_and_conso(df_sqi: pd.DataFrame,
-                            df_annot: pd.DataFrame,
-                            window: int = 9,
-                            consensus_ratio: float = 0.7,
-                            quality_treshold: float = 0.5,
-                            sampling_frequency: int = sampling_frequency) \
-                                -> pd.DataFrame:
 
-    df_annot = consensus_creation(df_annot, consensus_ratio=consensus_ratio)
+def consensus_creation(df_annot: pd.DataFrame,
+                       consensus_col: str = 'consensus',
+                       consensus_treshold: float = 0.7) -> pd.DataFrame:
+    """From a DataFrame of annotators, create the consensus (boolean) accord to
+    a treshold. The mean of annotators classification is compared with
+    consensus treshold for boolean classification.
+
+    Parameters
+    ----------
+    df_annot : pd.DataFrame
+        DataFrame with annotations only, one annotator by column, one
+        observation by line
+    consensus_col : str
+        Name of the column to input the consensus
+    consensus_treshold : float
+        The consensus treshold for classification in boolean class
+
+    Returns
+    -------
+    df_annot : pd.DataFrame
+        DataFrame with added boolean consensus for each observations
+    """
+    df_annot[consensus_col] = df_annot.mean(axis=1)
+    df_annot[consensus_col] = df_annot[consensus_col].apply(
+        lambda x: 1 if x >= consensus_treshold else 0)
+
+    return df_annot
+
+
+def make_consensus_and_conso(df_sqi: pd.DataFrame,
+                             df_annot: pd.DataFrame,
+                             consensus_treshold: float = 0.7,
+                             consensus_col: str = 'consensus') -> pd.DataFrame:
+    """From two DataFrame of same index with SQIs and annotations, makes a
+    consolidated DataFrame with consensus of annotators computed by a treshold.
+
+    Parameters
+    ----------
+    df_sqi : pd.DataFrame
+        DataFrame with computed SQIs
+    df_annot : pd.DataFrame
+        DataFrame with annotations only, one annotator by column, one
+        observation by line
+    consensus_treshold : float
+        The consensus treshold for classification in boolean class
+    consensus_col : str
+        Name of the column to input the consensus
+
+    Returns
+    -------
+    df_conso : pd.DataFrame
+        Consolidated DataFrame with consensus
+    """
+    df_annot = consensus_creation(df_annot=df_annot,
+                                  consensus_col=consensus_col,
+                                  consensus_treshold=consensus_treshold)
     df_conso = pd.concat([df_sqi, df_annot],  axis=1)
 
     return df_conso
 
 
-def classification_correspondance_avg(timestamp,
-                                      sampling_frequency=1000,
-                                      window=9):
-
-    start = timestamp
-    end = start + window * sampling_frequency - 1
-    cons_value = df_ecg.loc[start:end]['cons'].values
-
-    classif_avg = np.mean([int(cons_value)])
-
-    return classif_avg
-
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='input parameters')
-    parser.add_argument("-w", "--window", dest="window",
-                        help="time window in sec for split", metavar="FILE")
-    parser.add_argument("-c", "--consensus_ratio", dest="consensus_ratio",
-                        help="percentage of agreement for consensus",
-                        metavar="FILE")
-    parser.add_argument("-q", "--quality_treshold", dest="quality_treshold",
-                        help="treshold to determine quality", metavar="FILE")
-    parser.add_argument("-sf", "--sampling_frequency",
-                        dest="sampling_frequency",
-                        help="sampling_frequency_of_file", metavar="FILE")
-    parser.add_argument("-i", "--input_file", dest="input_file",
-                        help="dafaframe to load", metavar="FILE")
-    parser.add_argument("-o", "--output_folder", dest="output_folder",
-                        help="output_folder_for_ddf", metavar="FILE",
-                        default="./exports")
-
+    parser.add_argument('-i',
+                        '--input_file', dest='input_file',
+                        help='dafaframe to load',
+                        metavar='FILE')
+    parser.add_argument('-o',
+                        '--output_folder',
+                        dest='output_folder',
+                        help='output_folder_for_ddf',
+                        metavar='FILE',
+                        default='./exports')
+    parser.add_argument('-s', '--sampling_frequency',
+                        dest='sampling_frequency',
+                        help='sampling_frequency_of_file',
+                        metavar='FILE',
+                        default='256')
+    parser.add_argument('-w',
+                        '--window_s',
+                        dest='window_s',
+                        help='time window_s in sec for split',
+                        metavar='FILE',
+                        default='9')
+    parser.add_argument('-c',
+                        '--consensus_treshold',
+                        dest='consensus_treshold',
+                        help='percentage of agreement for consensus',
+                        metavar='FILE',
+                        default='0.7')
+    parser.add_argument('-q',
+                        '--quality_treshold',
+                        dest='quality_treshold',
+                        help='treshold to determine quality',
+                        metavar='FILE',
+                        default='0.5')
     args = parser.parse_args()
 
     df_ecg = pd.read_csv(args.input_file,
                          index_col=0)
 
+    df_sqi = compute_sqi(df_ecg=df_ecg,
+                         sampling_frequency=int(args.sampling_frequency),
+                         window_s=int(args.window_s))
 
-    # TO UPDATE
-    df_ml = compute_sqi(df_ecg=df_ecg,
-                        window=int(args.window),
-                        consensus_ratio=float(args.consensus_ratio),
-                        quality_treshold=float(args.quality_treshold),
-                        sampling_frequency=int(args.sampling_frequency))
+    df_annot = compute_quality(df_ecg=df_ecg,
+                               sampling_frequency=int(args.sampling_frequency),
+                               window_s=int(args.window_s),
+                               quality_treshold=float(args.quality_treshold))
 
-    df_ml.to_csv(f'{args.output_folder}/df_consolidated_consensus.csv',
-                 index=False)
+    df_conso = make_consensus_and_conso(
+                    df_sqi=df_sqi,
+                    df_annot=df_annot,
+                    consensus_treshold=float(args.consensus_treshold))
+
+    df_conso.to_csv(f'{args.output_folder}/df_conso_{int(args.window_s)}'
+                    f'_{float(args.quality_treshold)}_'
+                    f'{float(args.consensus_treshold)}.csv',
+                    index=False)
