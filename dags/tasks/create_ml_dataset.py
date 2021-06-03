@@ -1,3 +1,30 @@
+"""create_ml_dataset script
+
+This script creates and exports a DataFrame prepared for ecg_qc training. From
+a DataFrame with a signal and annotations, for a defined time window, it:
+    * computes SQIs
+    * computes signal quality for each annotator (treshold)
+    * makes a consensus of annotators (treshold)
+    * consolidates SQIs, signal quality by annotator and consensus in a
+    DataFrame and exports it
+
+This file can also be imported as a module and contains the following
+fonctions:
+
+    * compute_sqi - From a DataFrame of with ecg signal, create a DataFrame
+    with SQIs computed for a time window in seconds.
+    * quality_classification - Classify a segment of annotations in a
+    boolean quality, thanks to a treshold.
+    * compute_quality - From a DataFrame of with ecg signal, create a DataFrame
+    with annotators classification for a time window in seconds.
+    * consensus_creation - From a DataFrame of annotators, create the consensus
+    (boolean) accord to a treshold
+    * make_consensus_and_conso - From two DataFrame of same index with SQIs and
+    annotations, makes a consolidated DataFrame with consensus of annotators
+    computed by a treshold.
+    * main - the main function of the script
+"""
+
 import argparse
 import pandas as pd
 import numpy as np
@@ -45,9 +72,9 @@ def compute_sqi(df_ecg: pd.DataFrame,
             ecg_signal=df_ecg[signal_col][start_index:end_index].values)
 
         df_sqi = df_sqi.append({'timestamp_start': df_ecg[signal_col]
-                                [start_index].index[0],
+                                [start_index:end_index].index[0],
                                 'timestamp_end': df_ecg[signal_col]
-                                [end_index].index[0],
+                                [start_index:end_index].index[-1],
                                 'qSQI_score': sqi_scores[0][0],
                                 'cSQI_score': sqi_scores[0][1],
                                 'sSQI_score': sqi_scores[0][2],
@@ -60,7 +87,7 @@ def compute_sqi(df_ecg: pd.DataFrame,
 
 
 def quality_classification(annotations: list,
-                           quality_treshold: float = 0.5) -> bool:
+                           quality_treshold: float = 0.8) -> bool:
     """Classify a segment of annotations in a boolean quality, thanks to a
     treshold. For a list of annotations with same frequency, the treshold
     is compared with the mean for classification.
@@ -87,9 +114,10 @@ def quality_classification(annotations: list,
 
 def compute_quality(df_ecg: pd.DataFrame,
                     signal_col: str = 'signal',
+                    record_col: str = 'record',
                     sampling_frequency_hz: int = 256,
                     window_s: int = 9,
-                    quality_treshold: float = 0.5) -> pd.DataFrame:
+                    quality_treshold: float = 0.8) -> pd.DataFrame:
     """From a DataFrame of with ecg signal, create a DataFrame with annotators
     classification for a time window in seconds.
 
@@ -112,7 +140,7 @@ def compute_quality(df_ecg: pd.DataFrame,
         DataFrame with annotators classifications
     """
     df_annot = pd.DataFrame()
-    annotators = df_ecg.columns.drop(signal_col)
+    annotators = df_ecg.columns.drop([signal_col, record_col])
 
     for i in range(
          round(df_ecg.shape[0] / (window_s * sampling_frequency_hz))):
@@ -126,13 +154,14 @@ def compute_quality(df_ecg: pd.DataFrame,
 
     df_annot.reset_index()
     df_annot.columns = annotators
+    df_annot['record'] = df_ecg['record']
 
     return df_annot
 
 
 def consensus_creation(df_annot: pd.DataFrame,
                        consensus_col: str = 'consensus',
-                       consensus_treshold: float = 0.7) -> pd.DataFrame:
+                       consensus_treshold: float = 0.5) -> pd.DataFrame:
     """From a DataFrame of annotators, create the consensus (boolean) accord to
     a treshold. The mean of annotators classification is compared with
     consensus treshold for boolean classification.
@@ -161,7 +190,7 @@ def consensus_creation(df_annot: pd.DataFrame,
 
 def make_consensus_and_conso(df_sqi: pd.DataFrame,
                              df_annot: pd.DataFrame,
-                             consensus_treshold: float = 0.7,
+                             consensus_treshold: float = 0.5,
                              consensus_col: str = 'consensus') -> pd.DataFrame:
     """From two DataFrame of same index with SQIs and annotations, makes a
     consolidated DataFrame with consensus of annotators computed by a treshold.
@@ -215,22 +244,22 @@ if __name__ == '__main__':
                         help='time window_s in sec for split',
                         metavar='FILE',
                         default='9')
-    parser.add_argument('-c',
+    parser.add_argument('-ch',
                         '--consensus_treshold',
                         dest='consensus_treshold',
                         help='percentage of agreement for consensus',
                         metavar='FILE',
-                        default='0.7')
+                        default='0.5')
     parser.add_argument('-q',
                         '--quality_treshold',
                         dest='quality_treshold',
                         help='treshold to determine quality',
                         metavar='FILE',
-                        default='0.5')
+                        default='0.8')
     args = parser.parse_args()
 
-    df_ecg = pd.read_csv(args.input_file,
-                         index_col=0)
+    print(args.input_file)
+    df_ecg = pd.read_csv(args.input_file)
 
     df_sqi = compute_sqi(df_ecg=df_ecg,
                          sampling_frequency_hz=int(args.sampling_frequency_hz),
@@ -246,7 +275,7 @@ if __name__ == '__main__':
                                         consensus_treshold=float(
                                             args.consensus_treshold))
 
-    df_conso.to_csv(f'{args.output_folder}/df_conso_{int(args.window_s)}'
+    df_conso.to_csv(f'{args.output_folder}/df_ml_{int(args.window_s)}'
                     f'_{float(args.quality_treshold)}_'
                     f'{float(args.consensus_treshold)}.csv',
                     index=False)

@@ -4,10 +4,13 @@ This script creates and exports a DataFrame for an ECG signal. It takes into
 consideration several elements to load corresponding EDF file of the server.
 
 This file can also be imported as a module and contains the following
-cllass:
+class:
 
     * EdfLoader - A class used to load an edf file and export it in
     DataFrame format
+
+and following function:
+    * main - the main function of the script
 """
 
 
@@ -131,7 +134,7 @@ if __name__ == '__main__':
                         dest='record',
                         help='record to load',
                         metavar='FILE')
-    parser.add_argument('-c',
+    parser.add_argument('-ch',
                         '--channel',
                         dest='channel',
                         help='channel to load',

@@ -2,6 +2,10 @@
 
 This script wrap import_ecg_segment and import_annotation_dataset scripts
 and consolidate both DataFrames.
+
+This file can also be imported as a module and contains the following
+fonctions:
+    * main - the main function of the script
 """
 
 from import_ecg_segment import EdfLoader
@@ -23,7 +27,7 @@ if __name__ == '__main__':
                         dest='record',
                         help='record to load',
                         metavar='FILE')
-    parser.add_argument('-c',
+    parser.add_argument('-ch',
                         '--channel',
                         dest='channel',
                         help='channel to load',
@@ -60,8 +64,6 @@ if __name__ == '__main__':
                         metavar='FILE',
                         default='256')
     args = parser.parse_args()
-#     annotators = [int(annotator) for annotator in
-#                   re.split(',', args.annot_ids)]
 
     loader = EdfLoader(patient=args.patient,
                        record=args.record,

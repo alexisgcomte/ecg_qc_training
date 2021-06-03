@@ -16,7 +16,7 @@ Allow to import from an edf file a certain window of time for a particular chann
 
 Exemple of use:
 ```python
-python3 dags/tasks/import_ecg_segment.py -p PAT_6 -r 77 -sg s1 -c ECG1+ECG1- -st '2020-12-18 13:00:00' -et '2020-12-18 14:30:00'
+python3 dags/tasks/import_ecg_segment.py -p PAT_6 -r 77 -sg s1 -ch emg6+emg6- -st '2020-12-18 13:00:00' -et '2020-12-18 14:30:00'
 ```
 
 ### 2) import_annotations (optional)
@@ -25,25 +25,25 @@ From the SQL database storing annotations, import them for a certain windows tim
 
 Exemple of use:
 ```python
-python3 dags/tasks/import_annotations.py -p PAT_6 -r 77 -c ECG1+ECG1- -ids 2,3,4 -st '2020-12-18 13:00:00' -et '2020-12-18 14:30:00' -s 256
+python3 dags/tasks/import_annotations.py -p PAT_6 -r 77 -ch emg6+emg6- -ids 2,3,4 -st '2020-12-18 13:00:00' -et '2020-12-18 14:30:00' -s 256
 ```
 
-### 3) ecg_annoted
+### 3) create_annoted_dataset
 
 Combines import_ecg_segment and import_annotations.
 
 Exemple of use:
 ```python
-python3 dags/tasks/create_annoted_dataset.py -p PAT_6 -r 77 -sg s1 -c ECG1+ECG1- -ids 2,3,4 -st '2020-12-18 13:00:00' -et '2020-12-18 14:30:00' -s 256
+python3 dags/tasks/create_annoted_dataset.py -p PAT_6 -r 77 -sg s1 -ch emg6+emg6- -ids 2,3,4 -st '2020-12-18 13:00:00' -et '2020-12-18 14:30:00' -s 256
 ```
 
-### 4) make_concensus
+### 4) create_ml_dataset
 
 Compute SQL for merge dataset and concensus.
 
 Exemple of use:
 ```python
-python3 dags/tasks/ml_dataset_creation.py -w 9 -c 0.7 -sf 256 -i ./exports/ecg_annoted_PAT_6_77_ECG1+ECG1-.csv -o ./exports
+python3 dags/tasks/create_ml_dataset.py -w 9 -c 0.5 -q 0.3 -s 256 -i ./exports/ecg_annoted_PAT_6_77_emg6+emg6-.csv -o ./exports
 ```
 
 ### 5) train_model
@@ -52,11 +52,8 @@ From previous csv, train a model and logs it in MLFlows.
 
 Exemple of use:
 ```python
-python3 dags/tasks/train_model.py -w 9 -c 0.7 -q 0.7 -i ./exports/df_consensus.csv
+python3 dags/tasks/train_model.py -w 9 -c 0.5 -q 0.3 -i ./exports/df_ml_9_0.3_0.5.csv
 ```
-
-exports/df_consolidated_concensus.csv
-
 
 ## III) Using Airflow and MLFlow
 

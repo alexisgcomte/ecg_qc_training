@@ -1,14 +1,25 @@
+"""create_ecg_dataset script
+
+This script creates and exports a DataFrame for an ECG signal. It takes into
+consideration several elements to load corresponding EDF file of the server.
+
+This file can also be imported as a module and contains the following
+class:
+
+    * EdfLoader - A class used to load an edf file and export it in
+    DataFrame format
+"""
+
 from airflow.decorators import dag, task
 from airflow.utils.dates import days_ago
 from tasks.import_annotations import make_result_df
 from tasks.import_ecg_segment import EdfLoader
-from tasks.ml_dataset_creation import compute_sqi, compute_quality, \
-                                      make_consensus_and_conso
+from tasks.create_ml_dataset import compute_sqi, compute_quality, \
+                                    make_consensus_and_conso
 from tasks.train_model import train_model
 import pandas as pd
 import json
 import os
-import itertools
 
 
 # Parameters
@@ -111,16 +122,16 @@ def dag_extract_ecg_annotation():
 
     @task(depends_on_past=True)
     def t_compute_sqi(df: pd.DataFrame,
-                       window_s: int = 9,
-                       consensus_treshold: float = 0.7,
-                       quality_treshold: float = 0.7,
-                       sampling_frequency: int = 256):
+                      window_s: int = 9,
+                      consensus_treshold: float = 0.7,
+                      quality_treshold: float = 0.7,
+                      sampling_frequency: int = 256):
 
         df_sqi = compute_sqi(df_ecg=df,
-                                   window_s=window_s,
-                                   consensus_treshold=consensus_treshold,
-                                   quality_treshold=quality_treshold,
-                                   sampling_frequency=sampling_frequency)
+                             window_s=window_s,
+                             consensus_treshold=consensus_treshold,
+                             quality_treshold=quality_treshold,
+                             sampling_frequency=sampling_frequency)
 
 #        df_consensus.to_csv(f'{output_folder}/df_consensus.csv')
 
@@ -145,11 +156,11 @@ def dag_extract_ecg_annotation():
 
     @task(depends_on_past=True)
     def t_make_consensus_and_conso(df_sqi: pd.DataFrame,
-                            df_annot: pd.DataFrame,
-                          window_s: int = 9,
-                          consensus_treshold: float = 0.7,
-                          quality_treshold: float = 0.7,
-                          sampling_frequency: int = 256):
+                                   df_annot: pd.DataFrame,
+                                   window_s: int = 9,
+                                   consensus_treshold: float = 0.7,
+                                   quality_treshold: float = 0.7,
+                                   sampling_frequency: int = 256):
 
         df_conso = make_consensus_and_conso(
             df_sqi=df_sqi,
@@ -192,12 +203,12 @@ def dag_extract_ecg_annotation():
     for window_s in window_ss:
         df_sqi = t_compute_sqi(df=df_consolidated,
                                window_s=window_s)
-        
+
         for quality_treshold in quality_tresholds:
 
             df_annot = t_compute_quality(df=df_consolidated,
                                          quality_treshold=quality_treshold)
-    
+
             for consensus_treshold in consensus_tresholds:
                 df_conso = t_make_consensus_and_conso(
                     df_sqi=df_sqi,

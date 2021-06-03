@@ -1,3 +1,18 @@
+"""train_model script
+
+This script imports ml_dataset (with specific time window, quality and
+consensus, train as model and uploads artificts and metrics to MLFlow.
+
+This file can also be imported as a module and contains the following
+fonctions:
+
+    * compute_metrics - for a model, X and y, computes and uploads metrics and
+    graphs to analyse the model to MLFlow
+    * train_model - From a DataFrame, trains a Random Forest Classifier with
+    grid search and exports it with metrics in MLFlow
+    * main - the main function of the script
+"""
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -5,28 +20,68 @@ import argparse
 import mlflow
 import os
 
-from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import StandardScaler
-from sklearn.compose import ColumnTransformer
 from sklearn.metrics import accuracy_score, f1_score, recall_score,\
                             roc_auc_score, precision_score,\
                             plot_confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
 
 
-def train_model(df: pd.DataFrame,
-                mlruns_dir: str = f'{os.getcwd()}/mlruns',
-                window: int = 9,
-                consensus_ratio: float = 0.7,
-                quality_treshold: float = 0.7):
+def compute_metrics(prefix: str,
+                    model,
+                    X: np.array,
+                    y_true: np.array,
+                    mlruns_dir: str = f'{os.getcwd()}/mlruns'):
+
+    """From a model, features X, targets y_true, computes several metrics and
+    upload them to ML Flow
+
+    Parameters
+    ----------
+    model :
+        Sklearn model to evaluate
+    X : np.array
+        Explicative features
+    y_pred : np.array
+        Target data
+    mlruns_dir : str
+        Directory where to export MLFlows runs
+    """
+    mlflow.set_tracking_uri(f'file:///{mlruns_dir}')
+    y_pred = model.predict(X)
+    mlflow.log_metric(f'{prefix}_Accuracy', accuracy_score(y_true, y_pred))
+    mlflow.log_metric(f'{prefix}_f1-score', f1_score(y_true, y_pred))
+    mlflow.log_metric(f'{prefix}Recall', recall_score(y_true, y_pred))
+    mlflow.log_metric(f'{prefix}precision', precision_score(y_true, y_pred))
+    mlflow.log_metric(f'{prefix}_ROC_AUC_score', roc_auc_score(y_true, y_pred))
+    titles_options = [(f'{prefix} - Confusion matrix', None),
+                      (f'{prefix} - Normalized confusion matrix', 'true')]
+    for title, normalize in titles_options:
+        disp = plot_confusion_matrix(estimator=model,
+                                     X=X,
+                                     y_true=y_true,
+                                     display_labels=[0, 1],
+                                     cmap=plt.cm.Blues,
+                                     normalize=normalize)
+        disp.ax_.set_title(title)
+        temp_name = f'{mlruns_dir}/{title}.png'
+        plt.savefig(temp_name)
+        mlflow.log_artifact(temp_name, "confusion-matrix-plots")
+
+
+def train_model(df_ml: pd.DataFrame,
+                window: int,
+                consensus_treshold: float,
+                quality_treshold: float,
+                mlruns_dir: str = f'{os.getcwd()}/mlruns'):
 
     mlflow.set_tracking_uri(f'file:///{mlruns_dir}')
 
     with mlflow.start_run():
-        df = df.fillna(0)  # To change?
-        print(df.head())
-        print(df['consensus'].value_counts())
+
+        # Setting Nan Value at 0 (neutral)
+        df_ml = df_ml.fillna(0)
 
         # Declaration of target and features_list
 
@@ -34,23 +89,12 @@ def train_model(df: pd.DataFrame,
         features_list = ['qSQI_score', 'cSQI_score', 'sSQI_score',
                          'kSQI_score', 'pSQI_score', 'basSQI_score']
 
-        X = df.loc[:, features_list]
-        y = df.loc[:, target_variable]
+        print('Repartition of values:', df_ml[target_variable].value_counts())
 
-        # Distinction of categorical features
+        X = df_ml.loc[:, features_list]
+        y = df_ml.loc[:, target_variable]
 
-        categorical_features_str = (X.select_dtypes(
-            include=['object']).columns)
-        categorical_features = [X.columns.get_loc(i)
-                                for i in categorical_features_str]
-
-        # Distinction of numeric features
-
-        numeric_features_str = X.columns.drop(categorical_features_str)
-        numeric_features = [X.columns.get_loc(i) for i in numeric_features_str]
-
-        # Convertion of pandas DataFrames to numpy arrays
-        # before using scikit-learn
+        # Making train and test variables
 
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42, stratify=y)
@@ -63,31 +107,20 @@ def train_model(df: pd.DataFrame,
         y_train = y_train.values
         y_test = y_test.values
 
-        # Declaration of the categorical and numeric transfomers
+        # Declaration, fit and application of numeric transfomer
 
-        categorical_transformer = OneHotEncoder(drop='first')
-        numeric_transformer = StandardScaler()
-
-        # Declaration of the feature encoder
-
-        feature_encoder = ColumnTransformer(
-            transformers=[
-                ('num', numeric_transformer, numeric_features),
-                ('cat', categorical_transformer, categorical_features)
-            ]
-        )
-
-        feature_encoder.fit(X_train)
-        X_train = feature_encoder.transform(X_train)
-        X_test = feature_encoder.transform(X_test)
+        std = StandardScaler()
+        std.fit(X_train)
+        X_train = std.transform(X_train)
+        X_test = std.transform(X_test)
 
         # Declaration of algorithm and parameters for gridsearch
 
         algo = RandomForestClassifier()
-        params = {'min_samples_leaf': np.arange(6, 12, 2),
-                  'max_depth': np.arange(6, 12, 2),
+        params = {'min_samples_leaf': np.arange(6, 12, 3),
+                  'max_depth': np.arange(6, 12, 3),
                   # 'max_features' : np.arange(6,12,2),
-                  'n_estimators': np.arange(6, 12, 2),
+                  'n_estimators': np.arange(6, 12, 3),
                   }
         grid_search = GridSearchCV(estimator=algo,
                                    param_grid=params,
@@ -96,93 +129,59 @@ def train_model(df: pd.DataFrame,
                                    verbose=5,
                                    n_jobs=-1)
 
-#         grid_search = LogisticRegression()
-
         grid_search.fit(X_train, y_train)
 
-        y_train_pred = grid_search.predict(X_train)
-        y_test_pred = grid_search.predict(X_test)
-
         # Performance logging
-
         mlflow.sklearn.log_model(grid_search, 'model')
 
         mlflow.log_param('window', window)
-        mlflow.log_param('consensus_ratio', consensus_ratio)
+        mlflow.log_param('consensus_treshold', consensus_treshold)
         mlflow.log_param('quality_treshold', quality_treshold)
 
         # Train logging
-
-        mlflow.log_metric('train_Accuracy', accuracy_score(y_train,
-                                                           y_train_pred))
-        mlflow.log_metric('train_f1-score', f1_score(y_train,
-                                                     y_train_pred))
-        mlflow.log_metric('train_Recall', recall_score(y_train,
-                                                       y_train_pred))
-        mlflow.log_metric('train_precision', precision_score(y_train,
-                                                             y_train_pred))
-        mlflow.log_metric('train_ROC_AUC_score', roc_auc_score(y_train,
-                                                               y_train_pred))
-
-        titles_options = [('Train - Confusion matrix', None),
-                          ('Train - Normalized confusion matrix', 'true')]
-        for title, normalize in titles_options:
-            disp = plot_confusion_matrix(grid_search, X_train, y_train,
-                                         display_labels=[0, 1],
-                                         cmap=plt.cm.Blues,
-                                         normalize=normalize)
-            disp.ax_.set_title(title)
-
-            temp_name = f'{mlruns_dir}/{title}.png'
-            plt.savefig(temp_name)
-            mlflow.log_artifact(temp_name, "confusion-matrix-plots")
-
-        # Test logging
-
-        mlflow.log_metric('test_Accuracy', accuracy_score(y_test,
-                                                          y_test_pred))
-        mlflow.log_metric('test_f1-score', f1_score(y_test,
-                                                    y_test_pred))
-        mlflow.log_metric('test_Recall', recall_score(y_test,
-                                                      y_test_pred))
-        mlflow.log_metric('test_precision', precision_score(y_test,
-                                                            y_test_pred))
-        mlflow.log_metric('test_ROC_AUC_score', roc_auc_score(y_test,
-                                                              y_test_pred))
-
-        titles_options = [('Test - Confusion matrix', None),
-                          ('Test - Normalized confusion matrix', 'true')]
-        for title, normalize in titles_options:
-            disp = plot_confusion_matrix(grid_search, X_test, y_test,
-                                         display_labels=[0, 1],
-                                         cmap=plt.cm.Blues,
-                                         normalize=normalize)
-            disp.ax_.set_title(title)
-
-            temp_name = f'{mlruns_dir}/{title}.png'
-            plt.savefig(temp_name)
-            mlflow.log_artifact(temp_name, 'confusion-matrix-plots')
+        compute_metrics('train',
+                        model=grid_search,
+                        X=X_train,
+                        y_true=y_train,
+                        mlruns_dir=mlruns_dir)
+        compute_metrics('test',
+                        model=grid_search,
+                        X=X_test,
+                        y_true=y_test,
+                        mlruns_dir=mlruns_dir)
 
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='input parameters')
-    parser.add_argument("-w", "--window", dest="window",
-                        help="time window in sec for split", metavar="FILE")
-    parser.add_argument("-c", "--consensus_ratio", dest="consensus_ratio",
-                        help="percentage of agreement for consensus",
-                        metavar="FILE")
-    parser.add_argument("-q", "--quality_treshold", dest="quality_treshold",
-                        help="treshold to determine quality", metavar="FILE")
-    parser.add_argument("-i", "--input_file", dest="input_file",
-                        help="dafaframe to load", metavar="FILE")
-
+    parser.add_argument('-i',
+                        '--input_file', dest='input_file',
+                        help='dafaframe to load',
+                        metavar='FILE')
+    parser.add_argument('-w',
+                        '--window_s',
+                        dest='window_s',
+                        help='time window_s in sec for split',
+                        metavar='FILE',
+                        default='9')
+    parser.add_argument('-c',
+                        '--consensus_treshold',
+                        dest='consensus_treshold',
+                        help='percentage of agreement for consensus',
+                        metavar='FILE',
+                        default='0.5')
+    parser.add_argument('-q',
+                        '--quality_treshold',
+                        dest='quality_treshold',
+                        help='treshold to determine quality',
+                        metavar='FILE',
+                        default='0.5')
     args = parser.parse_args()
 
-    df_ecg = pd.read_csv(args.input_file,
-                         index_col=0)
+    df_ml = pd.read_csv(args.input_file,
+                        index_col=0)
 
-    train_model(df=df_ecg,
-                window=int(args.window),
-                consensus_ratio=float(args.consensus_ratio),
+    train_model(df_ml=df_ml,
+                window=int(args.window_s),
+                consensus_treshold=float(args.consensus_treshold),
                 quality_treshold=float(args.quality_treshold))

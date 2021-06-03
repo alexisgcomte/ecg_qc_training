@@ -36,7 +36,13 @@ class sql_query:
             Path to load credentials to connect to SQL database. The CSV must
             include for columns Field,Value : user, password, host
         """
-        self.db_credentials = pd.read_csv(credentials_path, index_col='Field')
+        self.db_credentials = pd.read_csv(credentials_path,
+                                          index_col='Field',
+                                          sep=',')
+        self.user = self.db_credentials.loc['user'][0]
+        self.pw = self.db_credentials.loc['password'][0]
+        self.host = self.db_credentials.loc['host'][0]
+        self.db = self.db_credentials.loc['db'][0]
 
     def __call__(self,
                  start_date: pd.Timestamp,
@@ -63,16 +69,14 @@ class sql_query:
         """
 
         engine = create_engine(
-            'mysql+pymysql://{user}:{pw}@localhost/{db}'.format(
-                user=self.db_credentials.loc['user'][0],
-                pw=self.db_credentials.loc['password'][0],
-                db='grafana'))
+            f'mysql+pymysql://{self.user}:{self.pw}@{self.host}/{self.db}')
 
         # Annotation data is loaded with a difference of one month
         start_date = round(start_date.replace(month=12).value/1_000_000)
         end_date = round(end_date.replace(month=12).value/1_000_000)
         df_sql = pd.read_sql(
-            f'SELECT * FROM annotation_restitution '
+            f'SELECT user_id, epoch, epoch_end, text '
+            f'FROM  annotation_restitution '
             f'WHERE epoch >= {start_date} '
             f'AND epoch_end < {end_date} '
             f'AND text = "{text}";',
@@ -175,7 +179,6 @@ def make_annot_df(ids: str,
     df_sql = query(start_date=start_date,
                    end_date=end_date,
                    text=text)
-    df_sql = df_sql.loc[:, ['user_id', 'epoch', 'epoch_end']]
 
     # Transforming user_id column in seperate user_id columns
     dfs_users = [df_sql[df_sql['user_id'] == id] for _, id in enumerate(ids)]
@@ -197,8 +200,9 @@ def make_annot_df(ids: str,
 
     for i, list_id in enumerate(list_ids):
         df_annot[ids[i]] = list_id
-
     df_annot = df_annot.astype(int)
+
+    df_annot['record'] = df_sql['text'].iloc[0]
 
     return df_annot
 
@@ -216,7 +220,7 @@ if __name__ == '__main__':
                         dest='record',
                         help='record to load',
                         metavar='FILE')
-    parser.add_argument('-c',
+    parser.add_argument('-ch',
                         '--channel',
                         dest='channel',
                         help='channel to load',
