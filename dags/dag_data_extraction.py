@@ -12,7 +12,7 @@ class:
 
 from airflow.decorators import dag, task
 from airflow.utils.dates import days_ago
-from tasks.import_annotations import make_result_df
+from tasks.import_annotations import make_annot_df
 from tasks.import_ecg_segment import EdfLoader
 from tasks.create_ml_dataset import compute_sqi, compute_quality, \
                                     make_consensus_and_conso
@@ -47,7 +47,7 @@ parameters = [[param_json[signal]['patient'],
 @dag(default_args=default_args,
      schedule_interval=None,
      start_date=days_ago(1),
-     tags=['ecg_qc', 'preprocessing', 'extraction', 'optimized2'])
+     tags=['ecg_qc', 'preprocessing', 'extraction'])
 def dag_extract_ecg_annotation():
 
     @task(depends_on_past=False)
@@ -77,11 +77,11 @@ def dag_extract_ecg_annotation():
                       start_time: str,
                       end_time: str):
 
-        df_annot = make_result_df(ids=ids,
-                                  record=record,
-                                  channel=channel,
-                                  start_date=start_time,
-                                  end_date=end_time)
+        df_annot = make_annot_df(ids=ids,
+                                 record=record,
+                                 channel=channel,
+                                 start_date=start_time,
+                                 end_date=end_time)
 
         return df_annot
 
@@ -123,15 +123,11 @@ def dag_extract_ecg_annotation():
     @task(depends_on_past=True)
     def t_compute_sqi(df: pd.DataFrame,
                       window_s: int = 9,
-                      consensus_treshold: float = 0.7,
-                      quality_treshold: float = 0.7,
-                      sampling_frequency: int = 256):
+                      sampling_frequency_hz: int = 256):
 
         df_sqi = compute_sqi(df_ecg=df,
                              window_s=window_s,
-                             consensus_treshold=consensus_treshold,
-                             quality_treshold=quality_treshold,
-                             sampling_frequency=sampling_frequency)
+                             sampling_frequency_hz=sampling_frequency_hz)
 
 #        df_consensus.to_csv(f'{output_folder}/df_consensus.csv')
 
@@ -140,48 +136,36 @@ def dag_extract_ecg_annotation():
     @task(depends_on_past=True)
     def t_compute_quality(df: pd.DataFrame,
                           window_s: int = 9,
-                          consensus_treshold: float = 0.7,
                           quality_treshold: float = 0.7,
-                          sampling_frequency: int = 256):
+                          sampling_frequency_hz: int = 256):
 
         df_annot = compute_quality(df_ecg=df,
+                                   sampling_frequency_hz=sampling_frequency_hz,
                                    window_s=window_s,
-                                   consensus_treshold=consensus_treshold,
-                                   quality_treshold=quality_treshold,
-                                   sampling_frequency=sampling_frequency)
-
-#        df_consensus.to_csv(f'{output_folder}/df_consensus.csv')
+                                   quality_treshold=quality_treshold)
 
         return df_annot
 
     @task(depends_on_past=True)
     def t_make_consensus_and_conso(df_sqi: pd.DataFrame,
                                    df_annot: pd.DataFrame,
-                                   window_s: int = 9,
-                                   consensus_treshold: float = 0.7,
-                                   quality_treshold: float = 0.7,
-                                   sampling_frequency: int = 256):
+                                   consensus_treshold: float = 0.7):
 
         df_conso = make_consensus_and_conso(
             df_sqi=df_sqi,
             df_annot=df_annot,
-            window_s=window_s,
-            consensus_treshold=consensus_treshold,
-            quality_treshold=quality_treshold,
-            sampling_frequency=sampling_frequency)
-
-#        df_consensus.to_csv(f'{output_folder}/df_consensus.csv')
+            consensus_treshold=consensus_treshold)
 
         return df_conso
 
     @task(depends_on_past=True)
-    def ml_training(df: pd.DataFrame,
+    def ml_training(df_ml: pd.DataFrame,
                     mlruns_dir: str = f'{folder}/mlruns/',
                     window_s: int = 9,
                     consensus_treshold: float = 0.7,
                     quality_treshold: float = 0.7):
 
-        train_model(df=df,
+        train_model(df_ml=df_ml,
                     mlruns_dir=mlruns_dir,
                     window_s=window_s,
                     consensus_treshold=consensus_treshold,
@@ -196,11 +180,11 @@ def dag_extract_ecg_annotation():
     df_consolidated = merge_all_df(dfs_merge)
 
     # Parameter combination and comprehension list
-    window_ss = [9]
-    consensus_tresholds = [0.5]
-    quality_tresholds = [0.5]
+    windows_s = [2, 3, 4, 5, 6, 7, 8, 9]
+    consensus_tresholds = [0.2, 0.5]
+    quality_tresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
-    for window_s in window_ss:
+    for window_s in windows_s:
         df_sqi = t_compute_sqi(df=df_consolidated,
                                window_s=window_s)
 
@@ -210,12 +194,12 @@ def dag_extract_ecg_annotation():
                                          quality_treshold=quality_treshold)
 
             for consensus_treshold in consensus_tresholds:
-                df_conso = t_make_consensus_and_conso(
+                df_ml = t_make_consensus_and_conso(
                     df_sqi=df_sqi,
                     df_annot=df_annot,
                     consensus_treshold=consensus_treshold)
 
-                ml_training(df=df_conso,
+                ml_training(df_ml=df_ml,
                             window_s=window_s,
                             consensus_treshold=consensus_treshold,
                             quality_treshold=quality_treshold)

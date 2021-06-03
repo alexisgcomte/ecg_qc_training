@@ -50,6 +50,7 @@ def compute_metrics(prefix: str,
     """
     mlflow.set_tracking_uri(f'file:///{mlruns_dir}')
     y_pred = model.predict(X)
+
     mlflow.log_metric(f'{prefix}_Accuracy', accuracy_score(y_true, y_pred))
     mlflow.log_metric(f'{prefix}_f1-score', f1_score(y_true, y_pred))
     mlflow.log_metric(f'{prefix}Recall', recall_score(y_true, y_pred))
@@ -71,7 +72,7 @@ def compute_metrics(prefix: str,
 
 
 def train_model(df_ml: pd.DataFrame,
-                window: int,
+                window_s: int,
                 consensus_treshold: float,
                 quality_treshold: float,
                 mlruns_dir: str = f'{os.getcwd()}/mlruns'):
@@ -89,16 +90,15 @@ def train_model(df_ml: pd.DataFrame,
         features_list = ['qSQI_score', 'cSQI_score', 'sSQI_score',
                          'kSQI_score', 'pSQI_score', 'basSQI_score']
 
-        print('Repartition of values:', df_ml[target_variable].value_counts())
-
         X = df_ml.loc[:, features_list]
         y = df_ml.loc[:, target_variable]
-
+        quality_percent = y.value_counts().loc[1] / y.value_counts().sum()
         # Making train and test variables
 
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42, stratify=y)
 
+        print('Repartition of values:', df_ml[target_variable].value_counts())
         # Convertion of pandas DataFrames to numpy arrays
         # before using scikit-learn
 
@@ -134,9 +134,10 @@ def train_model(df_ml: pd.DataFrame,
         # Performance logging
         mlflow.sklearn.log_model(grid_search, 'model')
 
-        mlflow.log_param('window', window)
+        mlflow.log_param('window', window_s)
         mlflow.log_param('consensus_treshold', consensus_treshold)
         mlflow.log_param('quality_treshold', quality_treshold)
+        mlflow.log_param('quality_percent', quality_percent)
 
         # Train logging
         compute_metrics('train',
@@ -182,6 +183,6 @@ if __name__ == '__main__':
                         index_col=0)
 
     train_model(df_ml=df_ml,
-                window=int(args.window_s),
+                window_s=int(args.window_s),
                 consensus_treshold=float(args.consensus_treshold),
                 quality_treshold=float(args.quality_treshold))
