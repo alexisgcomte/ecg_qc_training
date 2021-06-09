@@ -92,7 +92,14 @@ def train_model(df_ml: pd.DataFrame,
 
         X = df_ml.loc[:, features_list]
         y = df_ml.loc[:, target_variable]
-        quality_percent = y.value_counts().loc[1] / y.value_counts().sum()
+
+        try:
+            quality_ratio = round(
+                y.value_counts().loc[1] / y.value_counts().sum(),
+                4)
+        except Exception:
+            quality_ratio = 0
+
         # Making train and test variables
 
         X_train, X_test, y_train, y_test = train_test_split(
@@ -137,7 +144,7 @@ def train_model(df_ml: pd.DataFrame,
         mlflow.log_param('window', window_s)
         mlflow.log_param('consensus_treshold', consensus_treshold)
         mlflow.log_param('quality_treshold', quality_treshold)
-        mlflow.log_param('quality_percent', quality_percent)
+        mlflow.log_param('quality_ratio', quality_ratio)
 
         # Train logging
         compute_metrics('train',

@@ -14,7 +14,7 @@ init_airflow:
 
 start_airflow:
 	source $(FOLDER_PATH)/env.sh;\
-	airflow scheduler & airflow webserver
+	airflow webserver & airflow scheduler & mlflow ui -p 5001
 
 test:
 	pytest -s -vvv $(TEST_PATH)
