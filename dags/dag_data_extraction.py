@@ -47,7 +47,7 @@ parameters = [[param_json[signal]['patient'],
 @dag(default_args=default_args,
      schedule_interval=None,
      start_date=days_ago(1),
-     tags=['ecg_qc', 'preprocessing', 'extraction'])
+     tags=['ecg_qc', 'preprocessing', 'extraction', 'test2'])
 def dag_extract_ecg_annotation():
 
     @task(depends_on_past=False)
@@ -180,9 +180,9 @@ def dag_extract_ecg_annotation():
     df_consolidated = merge_all_df(dfs_merge)
 
     # Parameter combination and comprehension list
-    windows_s = [2, 3, 4, 5, 6, 7, 8, 9]
-    consensus_tresholds = [0.2, 0.5]
-    quality_tresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    windows_s = [3, 5, 9]
+    consensus_tresholds = [0.3, 0.5]
+    quality_tresholds = [0.2, 0.5, 0.7, 9.0]
 
     for window_s in windows_s:
         df_sqi = t_compute_sqi(df=df_consolidated,
