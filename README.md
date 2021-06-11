@@ -46,6 +46,20 @@ Exemple of use:
 python3 dags/tasks/create_ml_dataset.py -w 9 -c 0.5 -q 0.3 -s 256 -i ./exports/ecg_annoted_PAT_6_77_emg6+emg6-.csv -o ./exports
 ```
 
+
+### TO DO
+
+Coder un bout manquant ici (transformation du dataframe consolidé en df avec consensus par metrics)
+(modifier nom des colonnes censensus global, non global, etc)
+Améliorer les scripts de génération de matrice de confusion
+Améliorer lisibilté des datasets successifs
+Modifier Python en bash
+Variabiliser le consensus par point (2 ou 3 paramètres maximums: tous, majorité, au moins 1)
+import de from dags.tasks.create_ml_dataset import consensus_creation
+
+```python
+python3 dags/tasks/make_consolidated_consensus.py 
+```
 ### 5) train_model
 
 From previous csv, train a model and logs it in MLFlows.
@@ -78,5 +92,5 @@ make start_airflow
 
 Starting MLFlow:
 ```bash
-mlflow ui
+mlflow ui -p <port>
 ```

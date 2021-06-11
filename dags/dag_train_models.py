@@ -12,8 +12,10 @@ parameters:
 from airflow.decorators import dag, task
 from airflow.utils.dates import days_ago
 from tasks.create_ml_dataset import compute_sqi, compute_quality, \
-                                    make_consensus_and_conso
+                                    make_consensus_and_conso, \
+                                    consensus_creation
 from tasks.train_model import train_model
+from tasks.make_consolidated_consensus import make_consolidated_consensus
 import pandas as pd
 import os
 
@@ -34,7 +36,7 @@ consensus_tresholds = [0.5]
 @dag(default_args=default_args,
      schedule_interval=None,
      start_date=days_ago(1),
-     tags=['ecg_qc', 'train', 'medium2'])
+     tags=['ecg_qc', 'train', 'medium10'])
 def dag_train_ecg():
 
     @task(depends_on_past=True)
@@ -83,20 +85,32 @@ def dag_train_ecg():
         return df_conso
 
     @task(depends_on_past=True)
-    def ml_training(df_ml: pd.DataFrame,
+    def t_ml_training(df_ml: pd.DataFrame,
+                    df_consolidated_consensus: pd.DataFrame,
                     mlruns_dir: str = f'{folder}/mlruns/',
                     window_s: int = 9,
                     consensus_treshold: float = 0.7,
                     quality_treshold: float = 0.7):
 
         train_model(df_ml=df_ml,
+        df_consolidated_consensus=df_consolidated_consensus,
                     mlruns_dir=mlruns_dir,
                     window_s=window_s,
                     consensus_treshold=consensus_treshold,
                     quality_treshold=quality_treshold)
+    
+    @task(depends_on_past=True)
+    def t_make_consolidated_consensus(
+        df_consolidated: pd.DataFrame,
+        consensus_threshold: int = 0.7) -> pd.DataFrame:
+
+        df_consolidated_consensus = make_consolidated_consensus(df_consolidated)
+
+        return df_consolidated_consensus
 
     # Parameter combination and comprehension list
     df_consolidated = t_load_df(f'{output_folder}/df_consolidated.pkl')
+    df_consolidated_consensus = t_make_consolidated_consensus(df_consolidated)
 
     for window_s in windows_s:
         df_sqi = t_compute_sqi(df=df_consolidated,
@@ -113,10 +127,13 @@ def dag_train_ecg():
                     df_annot=df_annot,
                     consensus_treshold=consensus_treshold)
 
-                ml_training(df_ml=df_ml,
-                            window_s=window_s,
-                            consensus_treshold=consensus_treshold,
-                            quality_treshold=quality_treshold)
+                t_ml_training(df_ml=df_ml,
+                                        df_consolidated_consensus=df_consolidated_consensus,
+                                     window_s=window_s,
+                                     consensus_treshold=consensus_treshold,
+                                     quality_treshold=quality_treshold)
+
+                
 
 
 dag_train = dag_train_ecg()
