@@ -1,7 +1,8 @@
 # ecg_qc_training
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Build Status](https://travis-ci.com/alexisgcomte/ecg_qc_training.svg?branch=main)](https://travis-ci.com/alexisgcomte/ecg_qc_training)
 [![CodeFactor](https://www.codefactor.io/repository/github/alexisgcomte/ecg_qc_training/badge)](https://www.codefactor.io/repository/github/alexisgcomte/ecg_qc_training)
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 [![SonarCloud](https://sonarcloud.io/images/project_badges/sonarcloud-white.svg)](https://sonarcloud.io/dashboard?id=alexisgcomte_ecg_qc_training)
 
