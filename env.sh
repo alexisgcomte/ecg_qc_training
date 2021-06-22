@@ -12,3 +12,6 @@ export POSTGRES_PASSWORD=postgres
 
 # Airflow env vars
 export POSTGRES_DATABASE_AIRFLOW=airflow_db
+
+# Test variables
+export TEST_PATH=$AIRFLOW_HOME/tests

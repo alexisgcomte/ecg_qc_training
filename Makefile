@@ -19,5 +19,8 @@ start_airflow:
 test:
 	pytest -s -vvv $(TEST_PATH)
 
+test_ml:
+	pytest -s -vvv $(TEST_PATH)/test_dag_train_models
+
 coverage:
 	pytest --cov=$(SRC_PATH) --cov-report html $(TEST_PATH) 

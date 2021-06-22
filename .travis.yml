@@ -7,11 +7,11 @@ python:
   - "3.9"
 
 install:
-  - pip install -r requirements.txt
-  - pip install codecov pytest-cov
+  - pip install -r requirements_dev.txt
 
 script:
-  - pytest --cov=./ecg_qc/
+  - source env.sh
+  - pytest -s -vvv $TEST_PATH/test_dag_train_models
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
