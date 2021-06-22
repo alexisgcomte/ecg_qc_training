@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from dags.tasks.import_annotations import sql_query,\
+from dags.tasks.import_annotations import SqlQuery,\
                                           generation_annot_list,\
                                           make_annot_df
 from sqlalchemy import create_engine
@@ -16,52 +16,52 @@ sampling_frequency_hz = 256
 
 
 @pytest.fixture()
-def test_sql_query_init_cred(credentials_path='tests/test_credentials.csv'):
-    return sql_query(credentials_path)
+def test_SqlQuery_init_cred(credentials_path='tests/test_credentials.csv'):
+    return SqlQuery(credentials_path)
 
 
-def test_sql_query_init(test_sql_query_init_cred):
-    assert test_sql_query_init_cred.user == 'user'
-    assert test_sql_query_init_cred.pw == 'password'
-    assert test_sql_query_init_cred.host == 'localhost'
-    assert test_sql_query_init_cred.db == 'grafana'
+def test_SqlQuery_init(test_SqlQuery_init_cred):
+    assert test_SqlQuery_init_cred.user == 'user'
+    assert test_SqlQuery_init_cred.pw == 'password'
+    assert test_SqlQuery_init_cred.host == 'localhost'
+    assert test_SqlQuery_init_cred.db == 'grafana'
 
 
 @pytest.fixture()
-def test_sql_query(credentials_path='credentials.csv'):
-    return sql_query(credentials_path)
+def test_SqlQuery(credentials_path='credentials.csv'):
+    return SqlQuery(credentials_path)
 
 
-def test_sql_query_call(test_sql_query):
+def test_SqlQuery_call(test_SqlQuery):
 
     engine = create_engine(f'mysql+pymysql://'
-                           f'{test_sql_query.user}:{test_sql_query.pw}'
-                           f'@localhost/{test_sql_query.db}')
+                           f'{test_SqlQuery.user}:{test_SqlQuery.pw}'
+                           f'@localhost/{test_SqlQuery.db}')
     assert engine is not None
 
 
 @pytest.fixture()
-def test_sql_query_df(credentials_path='credentials.csv',
+def test_SqlQuery_df(credentials_path='credentials.csv',
                       start_date=start_date,
                       end_date=end_date,
                       text=text):
 
-    query = sql_query(credentials_path)
+    query = SqlQuery(credentials_path)
     df_sql = query(start_date=start_date,
                    end_date=end_date,
                    text=text)
     return df_sql
 
 
-def test_df_sql_type(test_sql_query_df):
-    assert type(test_sql_query_df) is pd.DataFrame
-    assert test_sql_query_df.shape[0] > 0
+def test_df_sql_type(test_SqlQuery_df):
+    assert isinstance(test_SqlQuery_df, pd.DataFrame)
+    assert test_SqlQuery_df.shape[0] > 0
 
 
 @pytest.fixture()
-def test_df_users(test_sql_query_df,
+def test_df_users(test_SqlQuery_df,
                   user_id=2):
-    return test_sql_query_df[test_sql_query_df['user_id'] == user_id]
+    return test_SqlQuery_df[test_SqlQuery_df['user_id'] == user_id]
 
 
 def test_generation_annot_list(
@@ -70,7 +70,7 @@ def test_generation_annot_list(
         end_date=end_date,
         sampling_frequency_hz=sampling_frequency_hz):
 
-    assert type(test_df_users) is pd.DataFrame
+    assert isinstance(test_df_users, pd.DataFrame)
     assert test_df_users.shape[0] > 0
 
     list_classif = generation_annot_list(
@@ -80,7 +80,7 @@ def test_generation_annot_list(
         sampling_frequency_hz=sampling_frequency_hz)
 
     # "Normality" of the list
-    assert type(list_classif) is list
+    assert isinstance(list_classif, list)
     assert '1' in list_classif
     assert '0' in list_classif
 
@@ -104,6 +104,6 @@ def test_make_annot_df(ids=ids,
                              end_date=end_date,
                              sampling_frequency_hz=sampling_frequency_hz)
 
-    assert type(df_annot) is pd.DataFrame
+    assert isinstance(df_annot, pd.DataFrame)
     assert df_annot.shape[0] > 0
     assert df_annot.shape[1] == 4

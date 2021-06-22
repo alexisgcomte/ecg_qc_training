@@ -219,7 +219,7 @@ def make_consensus_and_conso(df_sqi: pd.DataFrame,
 
     # TO MODIFY
     df_conso = df_conso.fillna(0)
-    
+
     return df_conso
 
 
@@ -268,15 +268,12 @@ if __name__ == '__main__':
                          sampling_frequency_hz=int(args.sampling_frequency_hz),
                          window_s=int(args.window_s))
 
-    print('sqi ok')
     df_annot = compute_quality(df_ecg=df_ecg,
                                sampling_frequency_hz=int(
                                    args.sampling_frequency_hz),
                                window_s=int(args.window_s),
                                quality_treshold=float(args.quality_treshold))
 
-
-    print('annot ok')
     df_conso = make_consensus_and_conso(df_sqi=df_sqi,
                                         df_annot=df_annot,
                                         consensus_treshold=float(

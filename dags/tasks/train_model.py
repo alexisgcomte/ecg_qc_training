@@ -25,7 +25,8 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, f1_score, recall_score,\
                             roc_auc_score, precision_score,\
-                            plot_confusion_matrix, confusion_matrix, ConfusionMatrixDisplay
+                            plot_confusion_matrix, confusion_matrix,\
+                            ConfusionMatrixDisplay
 from sklearn.ensemble import RandomForestClassifier
 
 
@@ -75,8 +76,8 @@ def compute_metrics(prefix: str,
 def compute_global_metrics(prefix: str,
                            y_pred: np.array,
                            y_true: np.array,
-                           mlruns_dir: str = f'{os.getcwd()}/mlruns',
-                           total_seconds = None):
+                           total_seconds=None,
+                           mlruns_dir: str = f'{os.getcwd()}/mlruns'):
 
     """From a model, features X, targets y_true, computes several metrics and
     upload them to ML Flow
@@ -100,7 +101,7 @@ def compute_global_metrics(prefix: str,
     mlflow.log_metric(f'{prefix}_precision', precision_score(y_true, y_pred))
 
     cm = confusion_matrix(y_true, y_pred)
-    
+
     try:
 
         tn, fp, fn, tp = cm.ravel()
@@ -119,8 +120,9 @@ def compute_global_metrics(prefix: str,
         pass
 
     try:
-        mlflow.log_metric(f'{prefix}_ROC_AUC_score', roc_auc_score(y_true, y_pred))
-    
+        mlflow.log_metric(f'{prefix}_ROC_AUC_score',
+                          roc_auc_score(y_true, y_pred))
+
     except Exception:
         pass
 
@@ -128,13 +130,13 @@ def compute_global_metrics(prefix: str,
                       (f'{prefix} - Normalized Confusion Matrix', 'true')]
     for title, normalize in titles_options:
 
-        if normalize == None:
+        if normalize is None:
             cm_disp = np.round(cm, 0)
         else:
             cm_disp = np.round(cm/np.sum(cm.ravel()), 2)
 
         disp = ConfusionMatrixDisplay(confusion_matrix=cm_disp,
-                                     display_labels=[0, 1])
+                                      display_labels=[0, 1])
         disp = disp.plot(cmap=plt.cm.Blues)
         disp.ax_.set_title(title)
         temp_name = f'{mlruns_dir}/{title}.png'
@@ -148,7 +150,7 @@ def compute_global_metrics(prefix: str,
             cm_disp = np.round(cm*total_seconds/(60*np.sum(cm.ravel())), 2)
 
             disp = ConfusionMatrixDisplay(confusion_matrix=cm_disp,
-                                        display_labels=[0, 1])
+                                          display_labels=[0, 1])
             disp = disp.plot(cmap=plt.cm.Blues)
             disp.ax_.set_title(title)
             temp_name = f'{mlruns_dir}/{title}.png'
@@ -162,12 +164,13 @@ def compute_global_metrics(prefix: str,
             cm_disp = np.round(cm*total_seconds/(np.sum(cm.ravel())), 2)
 
             disp = ConfusionMatrixDisplay(confusion_matrix=cm_disp,
-                                        display_labels=[0, 1])
+                                          display_labels=[0, 1])
             disp = disp.plot(cmap=plt.cm.Blues)
             disp.ax_.set_title(title)
             temp_name = f'{mlruns_dir}/{title}.png'
             plt.savefig(temp_name)
             mlflow.log_artifact(temp_name, "confusion-matrix-plots")
+
 
 def train_model(df_ml: pd.DataFrame,
                 df_consolidated_consensus: pd.DataFrame,
@@ -179,9 +182,7 @@ def train_model(df_ml: pd.DataFrame,
 
     mlflow.set_tracking_uri(f'file:///{mlruns_dir}')
 
-    with mlflow.start_run() as run:
-    
-        run_id = run.info.run_id
+    with mlflow.start_run():
 
         # Declaration of target and features_list
 
@@ -252,14 +253,14 @@ def train_model(df_ml: pd.DataFrame,
         y_test_pred = grid_search.predict(X_test)
 
         compute_global_metrics('train',
-                y_pred=y_train_pred,
-                y_true=y_train,
-                mlruns_dir=mlruns_dir)
+                               y_pred=y_train_pred,
+                               y_true=y_train,
+                               mlruns_dir=mlruns_dir)
 
         compute_global_metrics('test',
-                y_pred=y_test_pred,
-                y_true=y_test,
-                mlruns_dir=mlruns_dir)
+                               y_pred=y_test_pred,
+                               y_true=y_test,
+                               mlruns_dir=mlruns_dir)
 
         # DEL
         # compute_metrics('train',
@@ -277,17 +278,20 @@ def train_model(df_ml: pd.DataFrame,
 
         y_pred = grid_search.predict(std.transform(X))
 
-        predictions = [(window_s * sampling_frequency_hz) * [y_pred[i]] for i, _ in enumerate(y_pred)]
-        predictions = list(itertools.chain(*predictions)) # flattening
+        predictions = [(window_s * sampling_frequency_hz) * [
+            y_pred[i]] for i, _ in enumerate(y_pred)]
+        predictions = list(itertools.chain(*predictions))  # flattening
         print('predictions length:', len(predictions))
         print('df_consolidate shape:', df_consolidated_consensus.shape[0])
         predictions = predictions[:df_consolidated_consensus.shape[0]]
         df_consolidated_consensus['predictions'] = predictions
 
-        total_seconds = round(df_consolidated_consensus.shape[0]/sampling_frequency_hz,0)
+        total_seconds = round(df_consolidated_consensus.shape[0] /
+                              sampling_frequency_hz, 0)
         print(total_seconds)
 
-        compute_global_metrics('global',
+        compute_global_metrics(
+                'global',
                 y_pred=df_consolidated_consensus['predictions'].values,
                 y_true=df_consolidated_consensus['predictions'].values,
                 mlruns_dir=mlruns_dir,
@@ -324,8 +328,9 @@ if __name__ == '__main__':
     df_ml = pd.read_csv(args.input_file,
                         index_col=0)
 
-    df_consolidated_consensus = pd.read_pickle('exports/df_consolidated_consensus.pkl')
-    
+    df_consolidated_consensus = pd.read_pickle(
+        'exports/df_consolidated_consensus.pkl')
+
     # Modify
     df_consolidated_consensus = df_consolidated_consensus.iloc[:1382400]
 

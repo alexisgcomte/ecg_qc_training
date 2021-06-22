@@ -62,12 +62,12 @@ def dag_create_dataset():
 
     @task(depends_on_past=False)
     def t_extract_annot(patient: str,
-                      record: str,
-                      segment: str,
-                      channel: str,
-                      ids: str,
-                      start_time: str,
-                      end_time: str):
+                        record: str,
+                        segment: str,
+                        channel: str,
+                        ids: str,
+                        start_time: str,
+                        end_time: str):
 
         df_annot = make_annot_df(ids=ids,
                                  record=record,
@@ -79,12 +79,12 @@ def dag_create_dataset():
 
     @task(depends_on_past=False)
     def t_extract_ecg(patient: str,
-                    record: str,
-                    segment: str,
-                    channel: str,
-                    ids: str,
-                    start_time: str,
-                    end_time: str):
+                      record: str,
+                      segment: str,
+                      channel: str,
+                      ids: str,
+                      start_time: str,
+                      end_time: str):
 
         loader = EdfLoader(patient=patient,
                            record=record,
@@ -116,7 +116,7 @@ def dag_create_dataset():
     # Process Pipeline
 
     dfs_merge = [t_merge_dataframe(t_extract_ecg(*parameters[index]),
-                                 t_extract_annot(*parameters[index]))
+                                   t_extract_annot(*parameters[index]))
                  for index, _ in enumerate(parameters)]
 
     t_merge_all_df(dfs_merge)

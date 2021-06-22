@@ -32,6 +32,7 @@ windows_s = [9]
 quality_tresholds = [0.5]
 consensus_tresholds = [0.5]
 
+
 @dag(default_args=default_args,
      schedule_interval=None,
      start_date=days_ago(1),
@@ -85,25 +86,26 @@ def dag_train_ecg():
 
     @task(depends_on_past=True)
     def t_ml_training(df_ml: pd.DataFrame,
-                    df_consolidated_consensus: pd.DataFrame,
-                    mlruns_dir: str = f'{folder}/mlruns/',
-                    window_s: int = 9,
-                    consensus_treshold: float = 0.7,
-                    quality_treshold: float = 0.7):
+                      df_consolidated_consensus: pd.DataFrame,
+                      mlruns_dir: str = f'{folder}/mlruns/',
+                      window_s: int = 9,
+                      consensus_treshold: float = 0.7,
+                      quality_treshold: float = 0.7):
 
         train_model(df_ml=df_ml,
-        df_consolidated_consensus=df_consolidated_consensus,
+                    df_consolidated_consensus=df_consolidated_consensus,
                     mlruns_dir=mlruns_dir,
                     window_s=window_s,
                     consensus_treshold=consensus_treshold,
                     quality_treshold=quality_treshold)
-    
+
     @task(depends_on_past=True)
     def t_make_consolidated_consensus(
-        df_consolidated: pd.DataFrame,
-        consensus_threshold: int = 0.7) -> pd.DataFrame:
+            df_consolidated: pd.DataFrame,
+            consensus_threshold: int = 0.7) -> pd.DataFrame:
 
-        df_consolidated_consensus = make_consolidated_consensus(df_consolidated)
+        df_consolidated_consensus = make_consolidated_consensus(
+            df_consolidated)
 
         return df_consolidated_consensus
 
@@ -126,13 +128,12 @@ def dag_train_ecg():
                     df_annot=df_annot,
                     consensus_treshold=consensus_treshold)
 
-                t_ml_training(df_ml=df_ml,
-                                        df_consolidated_consensus=df_consolidated_consensus,
-                                     window_s=window_s,
-                                     consensus_treshold=consensus_treshold,
-                                     quality_treshold=quality_treshold)
-
-                
+                t_ml_training(
+                    df_ml=df_ml,
+                    df_consolidated_consensus=df_consolidated_consensus,
+                    window_s=window_s,
+                    consensus_treshold=consensus_treshold,
+                    quality_treshold=quality_treshold)
 
 
 dag_train = dag_train_ecg()

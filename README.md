@@ -1,13 +1,16 @@
 # ecg_qc_training
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![SonarCloud](https://sonarcloud.io/images/project_badges/sonarcloud-white.svg)](https://sonarcloud.io/dashboard?id=alexisgcomte_ecg_qc_training)
 [![CodeFactor](https://www.codefactor.io/repository/github/alexisgcomte/ecg_qc_training/badge)](https://www.codefactor.io/repository/github/alexisgcomte/ecg_qc_training)
+
+[![SonarCloud](https://sonarcloud.io/images/project_badges/sonarcloud-white.svg)](https://sonarcloud.io/dashboard?id=alexisgcomte_ecg_qc_training)
 
 ## I) Reminder of annotated segments
 
 patient: PAT_6 / record:77 / channel: emg6+emg6- / time: 2020-12-18 13:00:00 à 2020-12-18 14:30:00
+
 patient: PAT_4 / record: 11/ channel: ECG1+ECG1- / time: 2020-12-15 21:50:00 à 2020-12-15 22:50:00
+    
 patient: PAT_2 / record: _3 / channel:  EMG1+EMG1- / time : 2020-12-14 21:55:00 à 2020-12-14 23:05:00
 
 
@@ -55,7 +58,7 @@ python3 dags/tasks/create_ml_dataset.py -w 9 -c 0.5 -q 0.3 -s 256 -i ./exports/e
 
 #### 5) make_consolidated_consensus
 
-```basg
+```bash
 python3 dags/tasks/make_consolidated_consensus.py -i ./exports/df_consolidated.csv -o ./exports/ -n df_consolidated_consensus -q 0.7
 ```
 

@@ -6,8 +6,8 @@ that is to say at frequency precision.
 This file can also be imported as a module and contains the following
 fonctions:
 
-    * make_consolidated_consensus - From a DataFrame of with ecg signal, create a DataFrame
-    with SQIs computed for a time window in seconds.
+    * make_consolidated_consensus - From a DataFrame of with ecg signal,
+    create a DataFrame with SQIs computed for a time window in seconds.
 """
 
 
@@ -26,11 +26,11 @@ output_folder = f'{folder}/exports'
 
 
 def make_consolidated_consensus(
-    df_consolidated: pd.DataFrame,
-    gobal_consensus_threshold: int = 0.7,
-    export_name: str = 'df_consolidated_consensus') -> pd.DataFrame:
+        df_consolidated: pd.DataFrame,
+        gobal_consensus_threshold: int = 0.7,
+        export_name: str = 'df_consolidated_consensus') -> pd.DataFrame:
 
-    """From consolidated DataFrame, according to a global consensus treshold, 
+    """From consolidated DataFrame, according to a global consensus treshold,
     creates a DataFrame with global consensus.
 
     Parameters
@@ -47,7 +47,7 @@ def make_consolidated_consensus(
     df_consolidated_consensus : pd.DataFrame
         DataFrame with computed SQIs
     """
-    
+
     annotators_columns = df_consolidated.columns.drop(['record', 'signal'])
     df_consolidated_consensus = consensus_creation(
         df_consolidated[annotators_columns],
