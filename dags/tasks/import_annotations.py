@@ -258,7 +258,7 @@ if __name__ == '__main__':
                              channel=args.channel,
                              start_date=args.start_time,
                              end_date=args.end_time,
-                             sampling_frequency_hz=float(
+                             sampling_frequency_hz=int(
                                  args.sampling_frequency_hz))
 
     df_annot.to_csv(f'{args.output_folder}/'

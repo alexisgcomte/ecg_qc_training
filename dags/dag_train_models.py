@@ -37,7 +37,7 @@ consensus_tresholds = [0.5]
      schedule_interval=None,
      start_date=days_ago(1),
      tags=['ecg_qc', 'train', 'medium10'])
-def dag_train_ecg():
+def dag_train_model():
 
     @task(depends_on_past=True)
     def t_load_df(df_path: str) -> pd.DataFrame:
@@ -136,4 +136,4 @@ def dag_train_ecg():
                     quality_treshold=quality_treshold)
 
 
-dag_train = dag_train_ecg()
+dag_train = dag_train_model()
