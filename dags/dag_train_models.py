@@ -28,15 +28,16 @@ default_args = {'owner': 'airflow',
                 'retries': 0}
 
 # Combinations to make
-windows_s = [9]
-quality_tresholds = [0.5]
-consensus_tresholds = [0.5]
+windows_s = [4, 9]
+quality_tresholds = [0.5, 0.8]
+consensus_tresholds = [0.5, 0.7]
+gobal_consensus_thresholds = [0.5, 0.7]
 
 
 @dag(default_args=default_args,
      schedule_interval=None,
      start_date=days_ago(1),
-     tags=['ecg_qc', 'train', 'medium10'])
+     tags=['ecg_qc', 'train_ml', 'testing'])
 def dag_train_model():
 
     @task(depends_on_past=True)
@@ -102,38 +103,43 @@ def dag_train_model():
     @task(depends_on_past=True)
     def t_make_consolidated_consensus(
             df_consolidated: pd.DataFrame,
-            consensus_threshold: int = 0.7) -> pd.DataFrame:
+            gobal_consensus_threshold: int = 0.7) -> pd.DataFrame:
 
         df_consolidated_consensus = make_consolidated_consensus(
-            df_consolidated)
+            df_consolidated=df_consolidated,
+            gobal_consensus_threshold=gobal_consensus_threshold)
 
         return df_consolidated_consensus
 
     # Parameter combination and comprehension list
     df_consolidated = t_load_df(f'{output_folder}/df_consolidated.pkl')
-    df_consolidated_consensus = t_make_consolidated_consensus(df_consolidated)
 
-    for window_s in windows_s:
-        df_sqi = t_compute_sqi(df=df_consolidated,
-                               window_s=window_s)
+    for gobal_consensus_threshold in gobal_consensus_thresholds:
+        df_consolidated_consensus = t_make_consolidated_consensus(
+            df_consolidated=df_consolidated,
+            gobal_consensus_threshold=gobal_consensus_threshold)
 
-        for quality_treshold in quality_tresholds:
+        for window_s in windows_s:
+            df_sqi = t_compute_sqi(df=df_consolidated,
+                                   window_s=window_s)
 
-            df_annot = t_compute_quality(df=df_consolidated,
-                                         quality_treshold=quality_treshold)
+            for quality_treshold in quality_tresholds:
 
-            for consensus_treshold in consensus_tresholds:
-                df_ml = t_make_consensus_and_conso(
-                    df_sqi=df_sqi,
-                    df_annot=df_annot,
-                    consensus_treshold=consensus_treshold)
+                df_annot = t_compute_quality(df=df_consolidated,
+                                             quality_treshold=quality_treshold)
 
-                t_ml_training(
-                    df_ml=df_ml,
-                    df_consolidated_consensus=df_consolidated_consensus,
-                    window_s=window_s,
-                    consensus_treshold=consensus_treshold,
-                    quality_treshold=quality_treshold)
+                for consensus_treshold in consensus_tresholds:
+                    df_ml = t_make_consensus_and_conso(
+                        df_sqi=df_sqi,
+                        df_annot=df_annot,
+                        consensus_treshold=consensus_treshold)
+
+                    t_ml_training(
+                        df_ml=df_ml,
+                        df_consolidated_consensus=df_consolidated_consensus,
+                        window_s=window_s,
+                        consensus_treshold=consensus_treshold,
+                        quality_treshold=quality_treshold)
 
 
 dag_train = dag_train_model()
