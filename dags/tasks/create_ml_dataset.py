@@ -261,7 +261,6 @@ if __name__ == '__main__':
                         default='0.8')
     args = parser.parse_args()
 
-    print(args.input_file)
     df_ecg = pd.read_csv(args.input_file)
 
     df_sqi = compute_sqi(df_ecg=df_ecg,

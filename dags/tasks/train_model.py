@@ -261,7 +261,7 @@ def train_model(df_ml: pd.DataFrame,
         compute_global_metrics(
                 'global',
                 y_pred=df_consolidated_consensus['predictions'].values,
-                y_true=df_consolidated_consensus['predictions'].values,
+                y_true=df_consolidated_consensus['consensus'].values,
                 mlruns_dir=mlruns_dir,
                 total_seconds=total_seconds)
 

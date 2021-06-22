@@ -60,7 +60,7 @@ python3 dags/tasks/create_ml_dataset.py -w 9 -c 0.5 -q 0.3 -s 256 -i ./exports/e
 #### 5) make_consolidated_consensus
 
 ```bash
-python3 dags/tasks/make_consolidated_consensus.py -i ./exports/df_consolidated.csv -o ./exports/ -n df_consolidated_consensus -q 0.7
+python3 dags/tasks/make_consolidated_consensus.py -i ./exports/df_consolidated.csv -n df_consolidated_consensus -q 0.7
 ```
 
 #### 6) train_model

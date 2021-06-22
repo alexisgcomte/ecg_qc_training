@@ -81,5 +81,5 @@ if __name__ == '__main__':
     df_consolidated = pd.read_csv(f'{args.input_file}')
     df_consolidated_consensus = make_consolidated_consensus(
         df_consolidated=df_consolidated,
-        gobal_consensus_threshold=args.quality_treshold,
+        gobal_consensus_threshold=float(args.quality_treshold),
         export_name=f'{args.name_export}')
