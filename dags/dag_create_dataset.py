@@ -1,7 +1,8 @@
-"""dag_extract_ecg_annotation DAG
+"""dag_create_dataset DAG
 
 This script is meant to be used as a dag. According to parameters loaded in
-signals_to_process.txt, will combine signal data with annotator annotations.
+signals_to_process.txt, will combine signal data with annotator annotations to
+create a consolidated dataset for lated ML pre-processing
 """
 
 from airflow.decorators import dag, task
@@ -38,11 +39,11 @@ parameters = [[param_json[signal]['patient'],
 @dag(default_args=default_args,
      schedule_interval=None,
      start_date=days_ago(1),
-     tags=['ecg_qc', 'extraction'])
-def dag_extract_ecg_annotation():
+     tags=['ecg_qc', 'dataset_creation'])
+def dag_create_dataset():
 
     @task(depends_on_past=False)
-    def extract_signal_parameters(index: str):
+    def t_extract_signal_parameters(index: str):
 
         # With signals to loads
         with open(folder + '/dags/signals_to_process.txt') as json_file:
@@ -60,7 +61,7 @@ def dag_extract_ecg_annotation():
         return parameters[index]
 
     @task(depends_on_past=False)
-    def extract_annot(patient: str,
+    def t_extract_annot(patient: str,
                       record: str,
                       segment: str,
                       channel: str,
@@ -77,7 +78,7 @@ def dag_extract_ecg_annotation():
         return df_annot
 
     @task(depends_on_past=False)
-    def extract_ecg(patient: str,
+    def t_extract_ecg(patient: str,
                     record: str,
                     segment: str,
                     channel: str,
@@ -97,14 +98,14 @@ def dag_extract_ecg_annotation():
         return df_ecg
 
     @task(depends_on_past=True)
-    def merge_dataframe(df_annot: pd.DataFrame, df_ecg: pd.DataFrame):
+    def t_merge_dataframe(df_annot: pd.DataFrame, df_ecg: pd.DataFrame):
 
         df = pd.concat([df_ecg, df_annot], axis=1).dropna()
 
         return df
 
     @task(depends_on_past=True)
-    def merge_all_df(df_list: list):
+    def t_merge_all_df(df_list: list):
 
         df_consolidated = pd.concat(df_list, axis=0)
         df_consolidated.to_csv(f'{output_folder}/df_consolidated.csv')
@@ -114,11 +115,11 @@ def dag_extract_ecg_annotation():
 
     # Process Pipeline
 
-    dfs_merge = [merge_dataframe(extract_ecg(*parameters[index]),
-                                 extract_annot(*parameters[index]))
+    dfs_merge = [t_merge_dataframe(t_extract_ecg(*parameters[index]),
+                                 t_extract_annot(*parameters[index]))
                  for index, _ in enumerate(parameters)]
 
-    merge_all_df(dfs_merge)
+    t_merge_all_df(dfs_merge)
 
 
-dag_data_extraction = dag_extract_ecg_annotation()
+dag_data_extraction = dag_create_dataset()

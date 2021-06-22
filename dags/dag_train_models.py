@@ -12,8 +12,7 @@ parameters:
 from airflow.decorators import dag, task
 from airflow.utils.dates import days_ago
 from tasks.create_ml_dataset import compute_sqi, compute_quality, \
-                                    make_consensus_and_conso, \
-                                    consensus_creation
+                                    make_consensus_and_conso
 from tasks.train_model import train_model
 from tasks.make_consolidated_consensus import make_consolidated_consensus
 import pandas as pd

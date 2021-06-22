@@ -7,10 +7,10 @@ it to CSV.
 This file can also be imported as a module and contains the following
 functions:
 
-    * sql_query - makes noise annotation SQL request
-    * generation_annot_list - transform noise information to a list same
+    * SqlQuerry - makes noise annotation SQL request
+    * generation_annot_list - transform noise information to a list with same
     sampling rate as ECG
-    * make_annot_df - use sql_query and generation_annot_list to create a
+    * make_annot_df - use SqlQuerry and generation_annot_list to create a
     DataFrame of annotations by annotator with same sampling rate as ECG
     * main - the main function of the script
 """
@@ -22,7 +22,7 @@ import re
 import os
 
 
-class sql_query:
+class SqlQuerry:
     """
     A class to make SQL request of all noise annotations for a channel and
     a record
@@ -173,9 +173,9 @@ def make_annot_df(ids: str,
 
     # SQL request
     if 'AIRFLOW_HOME' in os.environ:
-        query = sql_query(f'{os.environ["AIRFLOW_HOME"]}/credentials.csv')
+        query = SqlQuerry(f'{os.environ["AIRFLOW_HOME"]}/credentials.csv')
     else:
-        query = sql_query('credentials.csv')
+        query = SqlQuerry('credentials.csv')
     df_sql = query(start_date=start_date,
                    end_date=end_date,
                    text=text)
