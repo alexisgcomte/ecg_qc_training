@@ -171,6 +171,7 @@ def train_model(df_ml: pd.DataFrame,
                 window_s: int,
                 consensus_treshold: float,
                 quality_treshold: float,
+                global_consensus_treshold: float = 0.5, 
                 sampling_frequency_hz: int = 256,
                 mlruns_dir: str = f'{os.getcwd()}/mlruns') -> str:
 
@@ -210,10 +211,10 @@ def train_model(df_ml: pd.DataFrame,
         y_test = y_test.values
 
         algo = RandomForestClassifier()
-        params = {'min_samples_leaf': np.arange(6, 12, 3),
-                  'max_depth': np.arange(6, 12, 3),
-                  # 'max_features' : np.arange(6,12,2),
-                  'n_estimators': np.arange(6, 12, 3),
+        params = {'min_samples_leaf': np.arange(0, 100, 2),
+                  'max_depth': np.arange(0, 100, 2),
+                  'max_features' : np.arange(0, 100, 2),
+                  'n_estimators': np.arange(0, 100, 2),
                   }
         grid_search = GridSearchCV(estimator=algo,
                                    param_grid=params,
@@ -228,7 +229,8 @@ def train_model(df_ml: pd.DataFrame,
         mlflow.sklearn.log_model(grid_search, 'model')
 
         mlflow.log_param('window', window_s)
-        mlflow.log_param('consensus_treshold', consensus_treshold)
+        mlflow.log_param('consensus_treshold', global_consensus_treshold)
+        mlflow.log_param('global_consensus_treshold', consensus_treshold)
         mlflow.log_param('quality_treshold', quality_treshold)
         mlflow.log_param('quality_ratio', quality_ratio)
 
