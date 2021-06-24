@@ -142,7 +142,7 @@ def dag_train_model():
                         window_s=window_s,
                         consensus_treshold=consensus_treshold,
                         quality_treshold=quality_treshold,
-                        global_consensus_treshold=global_consensus_treshold)
+                        global_consensus_treshold=global_consensus_threshold)
 
 
 dag_train = dag_train_model()
