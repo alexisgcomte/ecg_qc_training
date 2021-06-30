@@ -210,11 +210,12 @@ def train_model(df_ml: pd.DataFrame,
         y_train = y_train.values
         y_test = y_test.values
 
+        # algo = RandomForestClassifier()
         algo = RandomForestClassifier()
-        params = {'min_samples_leaf': np.arange(0, 100, 2),
-                  'max_depth': np.arange(0, 100, 2),
-                  'max_features' : np.arange(0, 100, 2),
-                  'n_estimators': np.arange(0, 100, 2),
+        params = {'min_samples_leaf': np.arange(1, 5, 1),
+                  'max_depth': np.arange(11, 16, 1),
+                  'max_features': ['auto'],
+                  'n_estimators': np.arange(15, 20, 1),
                   }
         grid_search = GridSearchCV(estimator=algo,
                                    param_grid=params,
@@ -229,10 +230,12 @@ def train_model(df_ml: pd.DataFrame,
         mlflow.sklearn.log_model(grid_search, 'model')
 
         mlflow.log_param('window', window_s)
-        mlflow.log_param('consensus_treshold', global_consensus_treshold)
-        mlflow.log_param('global_consensus_treshold', consensus_treshold)
+        mlflow.log_param('consensus_treshold', consensus_treshold)
+        mlflow.log_param('global_consensus_treshold', global_consensus_treshold)
         mlflow.log_param('quality_treshold', quality_treshold)
         mlflow.log_param('quality_ratio', quality_ratio)
+        mlflow.log_param('best_param', grid_search.best_params_)
+        mlflow.log_param('algorith', 'rfc')
 
         # Train logging
 

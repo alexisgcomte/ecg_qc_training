@@ -28,8 +28,8 @@ default_args = {'owner': 'airflow',
                 'retries': 0}
 
 # Combinations to make
-windows_s = [2, 4, 6, 9]
-quality_tresholds = [0.5]
+windows_s = [2, 3, 5, 7, 9]
+quality_tresholds = [0.3, 0.5, 0.8]
 consensus_tresholds = [0.7]
 global_consensus_thresholds = [0.5, 0.7]
 
@@ -37,7 +37,7 @@ global_consensus_thresholds = [0.5, 0.7]
 @dag(default_args=default_args,
      schedule_interval=None,
      start_date=days_ago(1),
-     tags=['ecg_qc', 'train_ml', 'ready', 'improving_ml'])
+     tags=['ecg_qc', 'train_ml', 'rfc', 'improving_ml_9s'])
 def dag_train_model():
 
     @task(depends_on_past=True)

@@ -27,7 +27,7 @@ output_folder = f'{folder}/exports'
 
 def make_consolidated_consensus(
         df_consolidated: pd.DataFrame,
-        gobal_consensus_threshold: int = 0.7,
+        global_consensus_threshold: int = 0.7,
         export_name: str = 'df_consolidated_consensus') -> pd.DataFrame:
 
     """From consolidated DataFrame, according to a global consensus treshold,
@@ -37,7 +37,7 @@ def make_consolidated_consensus(
     ----------
     df_consolidated : pd.DataFrame
         DataFrame with ecg signals and annotations
-    gobal_consensus_threshold : int
+    global_consensus_threshold : int
         The consensus treshold for classification in boolean class
     export_name : str
         TName for exportation
@@ -51,7 +51,7 @@ def make_consolidated_consensus(
     annotators_columns = df_consolidated.columns.drop(['record', 'signal'])
     df_consolidated_consensus = consensus_creation(
         df_consolidated[annotators_columns],
-        consensus_treshold=gobal_consensus_threshold)
+        consensus_treshold=global_consensus_threshold)
 
     df_consolidated_consensus.to_pickle(f'{output_folder}/{export_name}.pkl')
 
@@ -81,5 +81,5 @@ if __name__ == '__main__':
     df_consolidated = pd.read_csv(f'{args.input_file}')
     df_consolidated_consensus = make_consolidated_consensus(
         df_consolidated=df_consolidated,
-        gobal_consensus_threshold=float(args.quality_treshold),
+        global_consensus_threshold=float(args.quality_treshold),
         export_name=f'{args.name_export}')
