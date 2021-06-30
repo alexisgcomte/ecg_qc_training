@@ -8,6 +8,7 @@ fonctions:
 
     * make_consolidated_consensus - From a DataFrame of with ecg signal,
     create a DataFrame with SQIs computed for a time window in seconds.
+
 """
 
 
@@ -46,6 +47,7 @@ def make_consolidated_consensus(
     -------
     df_consolidated_consensus : pd.DataFrame
         DataFrame with computed SQIs
+
     """
 
     annotators_columns = df_consolidated.columns.drop(['record', 'signal'])

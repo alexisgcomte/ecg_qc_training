@@ -2,7 +2,8 @@
 
 This script is meant to be used as a dag. According to parameters loaded in
 signals_to_process.txt, will combine signal data with annotator annotations to
-create a consolidated dataset for lated ML pre-processing
+create a consolidated dataset for lated ML pre-processing.
+
 """
 
 from airflow.decorators import dag, task

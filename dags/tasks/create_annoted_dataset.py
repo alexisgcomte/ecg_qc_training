@@ -6,6 +6,7 @@ and consolidate both DataFrames.
 This file can also be imported as a module and contains the following
 fonctions:
     * main - the main function of the script
+
 """
 
 from import_ecg_segment import EdfLoader

@@ -23,6 +23,7 @@ fonctions:
     annotations, makes a consolidated DataFrame with consensus of annotators
     computed by a treshold.
     * main - the main function of the script
+
 """
 
 import argparse
@@ -56,8 +57,10 @@ def compute_sqi(df_ecg: pd.DataFrame,
     -------
     df_sqi : pd.DataFrame
         DataFrame with computed SQIs
+
     """
-    ecg_qc_class = ecg_qc()
+    ecg_qc_class = ecg_qc(sampling_frequency=sampling_frequency_hz,
+                          normalized=None)
     df_sqi = pd.DataFrame(columns=['timestamp_start', 'timestamp_end',
                                    'qSQI_score', 'cSQI_score',
                                    'sSQI_score', 'kSQI_score',
@@ -103,6 +106,7 @@ def quality_classification(annotations: list,
     -------
     quality : float
         The classified quality of the annotations with selected treshold
+
     """
     if np.mean(annotations) >= quality_treshold:
         quality = 1
@@ -138,6 +142,7 @@ def compute_quality(df_ecg: pd.DataFrame,
     -------
     df_annot : pd.DataFrame
         DataFrame with annotators classifications
+
     """
     df_annot = pd.DataFrame()
     annotators = df_ecg.columns.drop([signal_col, record_col])
@@ -179,7 +184,8 @@ def consensus_creation(df_annot: pd.DataFrame,
     Returns
     -------
     df_annot : pd.DataFrame
-        DataFrame with added boolean consensus for each observations
+        DataFrame with added boolean consensus for each observation
+
     """
     df_annot[consensus_col] = df_annot.mean(axis=1)
     df_annot[consensus_col] = df_annot[consensus_col].apply(
@@ -211,14 +217,12 @@ def make_consensus_and_conso(df_sqi: pd.DataFrame,
     -------
     df_conso : pd.DataFrame
         Consolidated DataFrame with consensus
+
     """
     df_annot = consensus_creation(df_annot=df_annot,
                                   consensus_col=consensus_col,
                                   consensus_treshold=consensus_treshold)
     df_conso = pd.concat([df_sqi, df_annot],  axis=1)
-
-    # TO MODIFY
-    df_conso = df_conso.fillna(0)
 
     return df_conso
 

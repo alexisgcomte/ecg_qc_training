@@ -13,6 +13,7 @@ functions:
     * make_annot_df - use SqlQuery and generation_annot_list to create a
     DataFrame of annotations by annotator with same sampling rate as ECG
     * main - the main function of the script
+
 """
 
 import pandas as pd
@@ -26,15 +27,18 @@ class SqlQuery:
     """
     A class to make SQL request of all noise annotations for a channel and
     a record
+
     """
 
     def __init__(self, credentials_path: str):
-        """
+        """__init__
+
         Parameters
         ----------
         credentials_path : str
             Path to load credentials to connect to SQL database. The CSV must
             include for columns Field,Value : user, password, host
+
         """
         self.db_credentials = pd.read_csv(credentials_path,
                                           index_col='Field',
@@ -66,6 +70,7 @@ class SqlQuery:
         df_sql : pd.DataFrame
             DataFrame with noise annotations by user_id with start and end
             time of noise event
+
         """
 
         engine = create_engine(
@@ -111,6 +116,7 @@ def generation_annot_list(df_user: pd.DataFrame,
     list_classif : list
         List with same sampling frequency as ECG with boolean indication of
         noise (1 = good quality, 0 = noise)
+
     """
     duration = end_date - start_date
     point_count = round(
@@ -163,6 +169,7 @@ def make_annot_df(ids: str,
     -------
     df_annot : pd.DataFrame
         DataFrame with annotators booleans quality classification
+
     """
 
     # Parsing to right format
@@ -201,6 +208,7 @@ def make_annot_df(ids: str,
     for i, list_id in enumerate(list_ids):
         df_annot[ids[i]] = list_id
     df_annot = df_annot.astype(int)
+    df_annot.columns = [f'annot_{id}' for id in df_annot.columns]
 
     df_annot['record'] = df_sql['text'].iloc[0]
 

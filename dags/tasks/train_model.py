@@ -11,6 +11,7 @@ fonctions:
     * train_model - From a DataFrame, trains a Random Forest Classifier with
     grid search and exports it with metrics in MLFlow
     * main - the main function of the script
+
 """
 
 import pandas as pd
@@ -24,15 +25,14 @@ import itertools
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import accuracy_score, f1_score, recall_score,\
                             roc_auc_score, precision_score,\
-                            plot_confusion_matrix, confusion_matrix,\
-                            ConfusionMatrixDisplay
+                            confusion_matrix, ConfusionMatrixDisplay
 from sklearn.ensemble import RandomForestClassifier
 
 
 def compute_metrics(prefix: str,
-                    model,
-                    X: np.array,
+                    y_pred: np.array,
                     y_true: np.array,
+                    total_seconds=None,
                     mlruns_dir: str = f'{os.getcwd()}/mlruns'):
 
     """From a model, features X, targets y_true, computes several metrics and
@@ -48,49 +48,7 @@ def compute_metrics(prefix: str,
         Target data
     mlruns_dir : str
         Directory where to export MLFlows runs
-    """
-    mlflow.set_tracking_uri(f'file:///{mlruns_dir}')
-    y_pred = model.predict(X)
 
-    mlflow.log_metric(f'{prefix}_Accuracy', accuracy_score(y_true, y_pred))
-    mlflow.log_metric(f'{prefix}_f1-score', f1_score(y_true, y_pred))
-    mlflow.log_metric(f'{prefix}Recall', recall_score(y_true, y_pred))
-    mlflow.log_metric(f'{prefix}precision', precision_score(y_true, y_pred))
-    mlflow.log_metric(f'{prefix}_ROC_AUC_score', roc_auc_score(y_true, y_pred))
-    titles_options = [(f'{prefix} - Confusion matrix', None),
-                      (f'{prefix} - Normalized confusion matrix', 'true')]
-    for title, normalize in titles_options:
-        disp = plot_confusion_matrix(estimator=model,
-                                     X=X,
-                                     y_true=y_true,
-                                     display_labels=[0, 1],
-                                     cmap=plt.cm.Blues,
-                                     normalize=normalize)
-        disp.ax_.set_title(title)
-        temp_name = f'{mlruns_dir}/{title}.png'
-        plt.savefig(temp_name)
-        mlflow.log_artifact(temp_name, "confusion-matrix-plots")
-
-
-def compute_global_metrics(prefix: str,
-                           y_pred: np.array,
-                           y_true: np.array,
-                           total_seconds=None,
-                           mlruns_dir: str = f'{os.getcwd()}/mlruns'):
-
-    """From a model, features X, targets y_true, computes several metrics and
-    upload them to ML Flow
-
-    Parameters
-    ----------
-    model :
-        Sklearn model to evaluate
-    X : np.array
-        Explicative features
-    y_pred : np.array
-        Target data
-    mlruns_dir : str
-        Directory where to export MLFlows runs
     """
     mlflow.set_tracking_uri(f'file:///{mlruns_dir}')
 
@@ -171,7 +129,7 @@ def train_model(df_ml: pd.DataFrame,
                 window_s: int,
                 consensus_treshold: float,
                 quality_treshold: float,
-                global_consensus_treshold: float = 0.5, 
+                global_consensus_treshold: float = 0.5,
                 sampling_frequency_hz: int = 256,
                 mlruns_dir: str = f'{os.getcwd()}/mlruns') -> str:
 
@@ -187,6 +145,9 @@ def train_model(df_ml: pd.DataFrame,
 
         X = df_ml.loc[:, features_list]
         y = df_ml.loc[:, target_variable]
+
+        # TO MODIFY
+        X = X.fillna(0)
 
         try:
             quality_ratio = round(
@@ -231,7 +192,8 @@ def train_model(df_ml: pd.DataFrame,
 
         mlflow.log_param('window', window_s)
         mlflow.log_param('consensus_treshold', consensus_treshold)
-        mlflow.log_param('global_consensus_treshold', global_consensus_treshold)
+        mlflow.log_param('global_consensus_treshold',
+                         global_consensus_treshold)
         mlflow.log_param('quality_treshold', quality_treshold)
         mlflow.log_param('quality_ratio', quality_ratio)
         mlflow.log_param('best_param', grid_search.best_params_)
@@ -242,15 +204,15 @@ def train_model(df_ml: pd.DataFrame,
         y_train_pred = grid_search.predict(X_train)
         y_test_pred = grid_search.predict(X_test)
 
-        compute_global_metrics('train',
-                               y_pred=y_train_pred,
-                               y_true=y_train,
-                               mlruns_dir=mlruns_dir)
+        compute_metrics('train',
+                        y_pred=y_train_pred,
+                        y_true=y_train,
+                        mlruns_dir=mlruns_dir)
 
-        compute_global_metrics('test',
-                               y_pred=y_test_pred,
-                               y_true=y_test,
-                               mlruns_dir=mlruns_dir)
+        compute_metrics('test',
+                        y_pred=y_test_pred,
+                        y_true=y_test,
+                        mlruns_dir=mlruns_dir)
 
         y_pred = grid_search.predict(X)
 
@@ -263,7 +225,7 @@ def train_model(df_ml: pd.DataFrame,
         total_seconds = round(df_consolidated_consensus.shape[0] /
                               sampling_frequency_hz, 0)
 
-        compute_global_metrics(
+        compute_metrics(
                 'global',
                 y_pred=df_consolidated_consensus['predictions'].values,
                 y_true=df_consolidated_consensus['consensus'].values,
@@ -303,9 +265,6 @@ if __name__ == '__main__':
 
     df_consolidated_consensus = pd.read_pickle(
         'exports/df_consolidated_consensus.pkl')
-
-    # Modify
-    df_consolidated_consensus = df_consolidated_consensus.iloc[:1382400]
 
     train_model(df_ml=df_ml,
                 window_s=int(args.window_s),

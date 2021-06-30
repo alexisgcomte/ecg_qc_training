@@ -1,18 +1,19 @@
-"""create_ecg_dataset script
+"""import_ecg_Segment script
 
-This script creates and exports a DataFrame for an ECG signal. It takes into
-consideration several elements to load corresponding EDF file of the server.
+This script creates and exports a DataFrame including an ECG signal. It takes
+into consideration several elements to load corresponding EDF file from the
+server, such as the channel, start and end date.
 
 This file can also be imported as a module and contains the following
 class:
 
-    * EdfLoader - A class used to load an edf file and export it in
+    * EdfLoader - A class used to load an edf file and return it in
     DataFrame format
 
 and following function:
     * main - the main function of the script
-"""
 
+"""
 
 import pandas as pd
 from pyedflib import highlevel
@@ -21,10 +22,7 @@ import argparse
 
 
 class EdfLoader:
-    """
-    A class used to load an edf file and export it in DataFrame format
-
-    ...
+    """A class used to load an edf file and return it in DataFrame format
 
     Attributes
     ----------
@@ -49,21 +47,24 @@ class EdfLoader:
     -------
     convert_edf_to_dataframe(channel_name, start_time, end_time)
         Load EDF file and wrangle it into the DataFrame format
+
     """
 
     def __init__(self,
                  patient: str,
                  record: str,
                  segment: str):
-        """
+        """__init__
+
         Parameters
         ----------
         patient : str
-            patient
+            Patient to load
         record : str
             Record to load
         segment : str
             Segment to load
+
         """
         default_path = '/home/DATA/lateppe/Recherche_ECG/'
         self.patient = patient
@@ -99,6 +100,7 @@ class EdfLoader:
         df_ecg : pd.DataFrame
             DataFrame of the ECG for the requested channel, filter by
             with start and end timestamps
+
         """
         self.sampling_frequency_hz = int(self.headers[
             'SignalHeaders'][
