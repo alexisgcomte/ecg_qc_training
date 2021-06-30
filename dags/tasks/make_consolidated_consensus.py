@@ -80,7 +80,7 @@ if __name__ == '__main__':
                         default='0.7')
     args = parser.parse_args()
 
-    df_consolidated = pd.read_csv(f'{args.input_file}')
+    df_consolidated = pd.read_csv(f'{args.input_file}', index_col=0)
     df_consolidated_consensus = make_consolidated_consensus(
         df_consolidated=df_consolidated,
         global_consensus_threshold=float(args.quality_treshold),

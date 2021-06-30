@@ -198,6 +198,7 @@ def train_model(df_ml: pd.DataFrame,
         mlflow.log_param('quality_ratio', quality_ratio)
         mlflow.log_param('best_param', grid_search.best_params_)
         mlflow.log_param('algorith', 'rfc')
+        mlflow.log_param('version', 'updated_ecg_qc')
 
         # Train logging
 

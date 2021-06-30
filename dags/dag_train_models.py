@@ -28,16 +28,16 @@ default_args = {'owner': 'airflow',
                 'retries': 0}
 
 # Combinations to make
-windows_s = [9]
-quality_tresholds = [0.3, 0.5, 0.8]
-consensus_tresholds = [0.7]
+windows_s = [2, 3, 4, 5, 7, 9]
+quality_tresholds = [0.3, 0.4, 0.5, 0.5, 0.7]
+consensus_tresholds = [0.5, 0.7]
 global_consensus_thresholds = [0.5, 0.7]
 
 
 @dag(default_args=default_args,
      schedule_interval=None,
      start_date=days_ago(1),
-     tags=['ecg_qc', 'train_ml', 'rfc', 'improving_ml_9s_bis'])
+     tags=['ecg_qc', 'train_ml', 'rfc', 'improving_ml_9s', 'fixed'])
 def dag_train_model():
 
     @task(depends_on_past=True)
@@ -128,7 +128,8 @@ def dag_train_model():
             for quality_treshold in quality_tresholds:
 
                 df_annot = t_compute_quality(df=df_consolidated,
-                                             quality_treshold=quality_treshold)
+                                             quality_treshold=quality_treshold,
+                                             window_s=window_s)
 
                 for consensus_treshold in consensus_tresholds:
                     df_ml = t_make_consensus_and_conso(

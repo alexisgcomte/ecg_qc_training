@@ -155,11 +155,12 @@ def compute_quality(df_ecg: pd.DataFrame,
         annotations = [quality_classification(
             df_ecg[annotator][start_index:end_index].values,
             quality_treshold=quality_treshold) for annotator in annotators]
-        df_annot = df_annot.append([annotations], ignore_index=True)
+        df_annot = df_annot.append([[*annotations,
+                                    df_ecg[record_col][start_index]]],
+                                   ignore_index=True)
 
     df_annot.reset_index()
-    df_annot.columns = annotators
-    df_annot['record'] = df_ecg['record']
+    df_annot.columns = [*annotators, 'record']
 
     return df_annot
 
@@ -187,7 +188,8 @@ def consensus_creation(df_annot: pd.DataFrame,
         DataFrame with added boolean consensus for each observation
 
     """
-    df_annot[consensus_col] = df_annot.mean(axis=1)
+    print(df_annot)
+    df_annot.loc[:, consensus_col] = df_annot.mean(axis=1)
     df_annot[consensus_col] = df_annot[consensus_col].apply(
         lambda x: 1 if x >= consensus_treshold else 0)
 
@@ -265,7 +267,7 @@ if __name__ == '__main__':
                         default='0.8')
     args = parser.parse_args()
 
-    df_ecg = pd.read_csv(args.input_file)
+    df_ecg = pd.read_csv(args.input_file, index_col=0)
 
     df_sqi = compute_sqi(df_ecg=df_ecg,
                          sampling_frequency_hz=int(args.sampling_frequency_hz),
